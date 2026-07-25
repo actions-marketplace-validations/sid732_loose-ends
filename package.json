@@ -1,0 +1,25 @@
+{
+  "name": "loose-ends-monorepo",
+  "private": true,
+  "type": "module",
+  "description": "Graph-powered liveness checks for AI-written code.",
+  "license": "MIT",
+  "workspaces": [
+    "packages/*"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "clean": "tsc -b --clean",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc -b --pretty"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "typescript": "6.0.3",
+    "vitest": "^5.1.0"
+  }
+}

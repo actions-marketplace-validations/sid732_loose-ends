@@ -1,1 +1,8 @@
 .resource/
+.DS_Store
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+.loose-ends-cache/
+.env
