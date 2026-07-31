@@ -13,3 +13,7 @@ export {
   loadConfig,
   parseConfig,
 } from "./config.js";
+export { createMatcher, parseTarget, targetMatches, toRelative } from "./paths.js";
+export type { Matcher } from "./paths.js";
+export { discoverFiles } from "./discover.js";
+export type { SourceFile } from "./discover.js";
