@@ -17,3 +17,5 @@ export { createMatcher, parseTarget, targetMatches, toRelative } from "./paths.j
 export type { Matcher } from "./paths.js";
 export { discoverFiles } from "./discover.js";
 export type { SourceFile } from "./discover.js";
+export { MODULE_BODY, collectReferences, createSource, parseModule, scriptKindFor } from "./parse.js";
+export type { Declaration, DeclarationKind, ImportBinding, ImportKind, ImportRecord, LocalExport, ModuleInfo } from "./parse.js";
