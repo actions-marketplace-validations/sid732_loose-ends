@@ -19,3 +19,7 @@ export { discoverFiles } from "./discover.js";
 export type { SourceFile } from "./discover.js";
 export { MODULE_BODY, collectReferences, createSource, parseModule, scriptKindFor } from "./parse.js";
 export type { Declaration, DeclarationKind, ImportBinding, ImportKind, ImportRecord, LocalExport, ModuleInfo } from "./parse.js";
+export { Resolver, splitPackage } from "./resolve.js";
+export type { Resolution } from "./resolve.js";
+export { discoverPackages, flattenTarget, manifestEntries, readPackageJson, resolveExports } from "./workspace.js";
+export type { PackageJson, WorkspacePackage } from "./workspace.js";
