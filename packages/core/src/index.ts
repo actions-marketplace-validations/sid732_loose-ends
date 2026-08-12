@@ -23,3 +23,5 @@ export { Resolver, splitPackage } from "./resolve.js";
 export type { Resolution } from "./resolve.js";
 export { discoverPackages, flattenTarget, manifestEntries, readPackageJson, resolveExports } from "./workspace.js";
 export type { PackageJson, WorkspacePackage } from "./workspace.js";
+export { LivenessGraph, buildGraph, dependencyId, fileId, symbolId } from "./graph.js";
+export type { BuildResult, EdgeKind, GraphEdge, GraphNode, NodeKind, UnresolvedImport } from "./graph.js";
