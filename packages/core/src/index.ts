@@ -25,3 +25,5 @@ export { discoverPackages, flattenTarget, manifestEntries, readPackageJson, reso
 export type { PackageJson, WorkspacePackage } from "./workspace.js";
 export { LivenessGraph, buildGraph, dependencyId, fileId, symbolId } from "./graph.js";
 export type { BuildResult, EdgeKind, GraphEdge, GraphNode, NodeKind, UnresolvedImport } from "./graph.js";
+export { DEFAULT_PROVIDERS, configRoots, discoverRoots, packageRoots, scriptTargets, testRoots } from "./roots.js";
+export type { Root, RootContext, RootKind, RootProvider } from "./roots.js";
