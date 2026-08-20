@@ -27,3 +27,13 @@ export { LivenessGraph, buildGraph, dependencyId, fileId, symbolId } from "./gra
 export type { BuildResult, EdgeKind, GraphEdge, GraphNode, NodeKind, UnresolvedImport } from "./graph.js";
 export { DEFAULT_PROVIDERS, configRoots, discoverRoots, packageRoots, scriptTargets, testRoots } from "./roots.js";
 export type { Root, RootContext, RootKind, RootProvider } from "./roots.js";
+export {
+  FRAMEWORK_PROVIDERS,
+  NEXT_ROUTE_EXPORTS,
+  detectFrameworks,
+  nextRoots,
+  serverlessRoots,
+  storybookRoots,
+  toolConfigRoots,
+  viteRoots,
+} from "./frameworks.js";

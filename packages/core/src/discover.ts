@@ -24,7 +24,7 @@ export function discoverFiles(config: LooseEndsConfig): SourceFile[] {
   const paths = fg.sync(config.include, {
     cwd: config.root,
     ignore: config.exclude,
-    dot: false,
+    dot: true,
     onlyFiles: true,
     followSymbolicLinks: false,
     unique: true,

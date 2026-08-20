@@ -1,0 +1,76 @@
+import { describe, expect, it } from "vitest";
+import { buildGraph, discoverRoots, fileId, loadConfig, symbolId } from "@loose-ends/core";
+import { project } from "./helpers/project.js";
+
+function rootsOf(files: Record<string, string | object>) {
+  const config = loadConfig(project(files));
+  return discoverRoots(config, buildGraph(config)).map((r) => r.node);
+}
+
+describe("framework roots", () => {
+  it("finds Next.js app and pages router files and their special exports", () => {
+    const nodes = rootsOf({
+      "package.json": { name: "web", dependencies: { next: "15.0.0", react: "19.0.0" } },
+      "src/app/layout.tsx": "export default function Layout() {}\nexport const metadata = {};",
+      "src/app/blog/[slug]/page.tsx": "export default function Page() {}\nexport function generateStaticParams() {}\nexport function helper() {}",
+      "src/app/api/users/route.ts": "export async function GET() {}",
+      "src/app/blog/card.tsx": "export function Card() {}",
+      "pages/_app.tsx": "export default function App() {}",
+      "middleware.ts": "export function middleware() {}\nexport const config = {};",
+      "next.config.mjs": "export default {};",
+    });
+    expect(nodes).toEqual(
+      expect.arrayContaining([
+        fileId("src/app/layout.tsx"),
+        symbolId("src/app/layout.tsx", "metadata"),
+        symbolId("src/app/blog/[slug]/page.tsx", "generateStaticParams"),
+        symbolId("src/app/api/users/route.ts", "GET"),
+        fileId("pages/_app.tsx"),
+        symbolId("middleware.ts", "middleware"),
+        fileId("next.config.mjs"),
+      ]),
+    );
+    expect(nodes).not.toContain(symbolId("src/app/blog/[slug]/page.tsx", "helper"));
+    expect(nodes).not.toContain(fileId("src/app/blog/card.tsx"));
+  });
+
+  it("only applies Next.js rules to packages that use Next.js", () => {
+    const nodes = rootsOf({ "package.json": { name: "lib", main: "index.js" }, "index.js": "", "app/page.tsx": "" });
+    expect(nodes).not.toContain(fileId("app/page.tsx"));
+  });
+
+  it("reads Vite index.html script tags", () => {
+    const nodes = rootsOf({
+      "package.json": { name: "spa", devDependencies: { vite: "6.0.0" } },
+      "index.html": `<html><body><script type="module" src="/src/main.tsx"></script></body></html>`,
+      "src/main.tsx": "",
+      "vite.config.ts": "export default {};",
+    });
+    expect(nodes).toEqual(expect.arrayContaining([fileId("src/main.tsx"), fileId("vite.config.ts")]));
+  });
+
+  it("finds serverless functions and tool configs", () => {
+    const nodes = rootsOf({
+      "package.json": { name: "fn", main: "index.js" },
+      "index.js": "",
+      "vercel.json": {},
+      "api/hello.ts": "export default function handler() {}",
+      "eslint.config.js": "export default [];",
+      ".prettierrc.cjs": "module.exports = {};",
+    });
+    expect(nodes).toEqual(expect.arrayContaining([fileId("api/hello.ts"), fileId("eslint.config.js"), fileId(".prettierrc.cjs")]));
+  });
+
+  it("applies frameworks per workspace package", () => {
+    const nodes = rootsOf({
+      "package.json": { name: "mono", workspaces: ["apps/*"] },
+      "apps/site/package.json": { name: "site", dependencies: { next: "15.0.0" } },
+      "apps/site/app/page.tsx": "export default function Page() {}",
+      "apps/api/package.json": { name: "api", main: "src/index.ts" },
+      "apps/api/src/index.ts": "",
+      "apps/api/app/page.tsx": "",
+    });
+    expect(nodes).toContain(fileId("apps/site/app/page.tsx"));
+    expect(nodes).not.toContain(fileId("apps/api/app/page.tsx"));
+  });
+});

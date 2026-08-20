@@ -17,6 +17,13 @@ export const DEFAULT_EXCLUDE = [
   "**/.next/**",
   "**/.turbo/**",
   "**/.git/**",
+  "**/.cache/**",
+  "**/.vercel/**",
+  "**/.netlify/**",
+  "**/.output/**",
+  "**/.yarn/**",
+  "**/.pnpm-store/**",
+  "**/storybook-static/**",
   "**/*.d.ts",
   "**/*.min.js",
 ];
