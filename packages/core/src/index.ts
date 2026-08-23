@@ -37,3 +37,5 @@ export {
   toolConfigRoots,
   viteRoots,
 } from "./frameworks.js";
+export { analyze, classify, label, pathTo, stateOf, summarize } from "./liveness.js";
+export type { Analysis, AnalyzeOptions, Liveness, LivenessSummary, NodeState } from "./liveness.js";
