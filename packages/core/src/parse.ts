@@ -1,4 +1,5 @@
 import ts from "typescript";
+import { FINDING_KINDS } from "./config.js";
 
 /** Pseudo-declaration name representing a module's top-level side effects. */
 export const MODULE_BODY = "<module>";
@@ -72,8 +73,30 @@ export interface LocalExport {
   local: string;
 }
 
+export type DirectiveAction = "entry" | "dormant" | "ignore";
+
+/**
+ * An inline comment that changes how Loose Ends treats code.
+ *
+ *   // loose-ends: dormant kept for the v1 webhook payload
+ *   // loose-ends: ignore superseded migration runs until Q3
+ *   // loose-ends-file: entry
+ */
+export interface Directive {
+  scope: "file" | "declaration";
+  action: DirectiveAction;
+  /** Finding kind for `ignore`, when given. */
+  kind?: string;
+  /** Free text after the action. Empty when missing. */
+  reason: string;
+  line: number;
+  /** Declarations the directive is attached to (declaration scope only). */
+  symbols: string[];
+}
+
 export interface ModuleInfo {
   path: string;
+  directives: Directive[];
   imports: ImportRecord[];
   declarations: Declaration[];
   /** `export { a as b }` style exports of local names. */
@@ -104,6 +127,7 @@ export function parseModule(path: string, text: string): ModuleInfo {
   const sf = createSource(path, text);
   const info: ModuleInfo = {
     path,
+    directives: [],
     imports: [],
     declarations: [],
     localExports: [],
@@ -223,6 +247,7 @@ export function parseModule(path: string, text: string): ModuleInfo {
     const decl = info.declarations.find((d) => d.name === exp.local);
     if (decl && !decl.exportedAs.includes(exp.exported)) decl.exportedAs.push(exp.exported);
   }
+  info.directives = collectDirectives(sf, text, info.declarations);
   info.bodyReferences = [...bodyRefs].sort();
   info.hasUnresolvableDynamic = info.imports.some((i) => (i.kind === "dynamic" || i.kind === "require") && i.specifier === "");
   return info;
@@ -414,4 +439,44 @@ function isNonReferenceIdentifier(id: ts.Identifier): boolean {
     return true;
   }
   return false;
+}
+
+const DIRECTIVE = /loose-ends(-file)?:\s*(entry|dormant|ignore)\b(.*)/;
+
+function collectDirectives(sf: ts.SourceFile, text: string, declarations: Declaration[]): Directive[] {
+  const out: Directive[] = [];
+  const seen = new Set<number>();
+  const anchors: Array<{ pos: number; statement?: ts.Statement }> = sf.statements.map((statement) => ({ pos: statement.getFullStart(), statement }));
+  anchors.push({ pos: sf.endOfFileToken.getFullStart() });
+  for (const anchor of anchors) {
+    const ranges = ts.getLeadingCommentRanges(text, anchor.pos) ?? [];
+    for (const range of ranges) {
+      if (seen.has(range.pos)) continue;
+      seen.add(range.pos);
+      const comment = text.slice(range.pos, range.end);
+      for (const rawLine of comment.split(/\r?\n/)) {
+        const cleaned = rawLine.replace(/^\s*(\/\/+|\/\*+|\*+)/, "").replace(/\*+\/\s*$/, "");
+        const match = DIRECTIVE.exec(cleaned);
+        if (!match) continue;
+        const scope = match[1] || !anchor.statement ? "file" : "declaration";
+        const action = match[2] as DirectiveAction;
+        let rest = (match[3] ?? "").trim();
+        let kind: string | undefined;
+        if (action === "ignore") {
+          const first = rest.split(/\s+/)[0] ?? "";
+          if ((FINDING_KINDS as readonly string[]).includes(first)) {
+            kind = first;
+            rest = rest.slice(first.length).trim();
+          }
+        }
+        const reason = rest.replace(/^[-:\u2013\u2014]\s*/, "").trim();
+        const symbols =
+          scope === "declaration" && anchor.statement
+            ? declarations.filter((d) => d.start === anchor.statement!.getStart(sf)).map((d) => d.name)
+            : [];
+        out.push({ scope, action, kind, reason, line: sf.getLineAndCharacterOfPosition(range.pos).line + 1, symbols });
+      }
+    }
+  }
+  return out;
 }

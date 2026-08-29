@@ -1,5 +1,6 @@
 import { posix } from "node:path";
 import { buildGraph, fileId, type BuildResult, type GraphEdge, type GraphNode, type LivenessGraph } from "./graph.js";
+import { applyDormant, type DirectiveProblem } from "./directives.js";
 import { discoverRoots, type Root, type RootProvider } from "./roots.js";
 import type { LooseEndsConfig } from "./types.js";
 
@@ -31,6 +32,8 @@ export interface Analysis {
   graph: LivenessGraph;
   roots: Root[];
   states: Map<string, NodeState>;
+  /** Dormant rules or directives that could not be applied. */
+  problems: DirectiveProblem[];
 }
 
 export interface AnalyzeOptions {
@@ -47,6 +50,7 @@ export function analyze(config: LooseEndsConfig, options: AnalyzeOptions = {}): 
   const build = buildGraph(config, { read: options.read });
   const roots = discoverRoots(config, build, options.providers);
   const analysis = classify(config, build, roots);
+  analysis.problems.push(...applyDormant(analysis));
   options.postProcess?.(analysis);
   return analysis;
 }
@@ -111,7 +115,7 @@ export function classify(config: LooseEndsConfig, build: BuildResult, roots: Roo
     }
   }
 
-  return { config, build, graph, roots, states };
+  return { config, build, graph, roots, states, problems: [] };
 }
 
 /**

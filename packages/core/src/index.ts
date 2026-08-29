@@ -8,6 +8,7 @@ export {
   DEFAULT_FAIL_ON,
   DEFAULT_INCLUDE,
   DEFAULT_TEST_PATTERNS,
+  FINDING_KINDS,
   SOURCE_EXTENSIONS,
   defaultConfig,
   loadConfig,
@@ -18,7 +19,7 @@ export type { Matcher } from "./paths.js";
 export { discoverFiles } from "./discover.js";
 export type { SourceFile } from "./discover.js";
 export { MODULE_BODY, collectReferences, createSource, parseModule, scriptKindFor } from "./parse.js";
-export type { Declaration, DeclarationKind, ImportBinding, ImportKind, ImportRecord, LocalExport, ModuleInfo } from "./parse.js";
+export type { Declaration, DeclarationKind, Directive, DirectiveAction, ImportBinding, ImportKind, ImportRecord, LocalExport, ModuleInfo } from "./parse.js";
 export { Resolver, splitPackage } from "./resolve.js";
 export type { Resolution } from "./resolve.js";
 export { discoverPackages, flattenTarget, manifestEntries, readPackageJson, resolveExports } from "./workspace.js";
@@ -39,3 +40,5 @@ export {
 } from "./frameworks.js";
 export { analyze, classify, label, pathTo, stateOf, summarize } from "./liveness.js";
 export type { Analysis, AnalyzeOptions, Liveness, LivenessSummary, NodeState } from "./liveness.js";
+export { allSuppressions, applyDormant, directiveRoots, inlineSuppressions } from "./directives.js";
+export type { DirectiveProblem, SuppressionRecord } from "./directives.js";

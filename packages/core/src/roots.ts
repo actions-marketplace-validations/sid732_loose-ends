@@ -5,6 +5,7 @@ import { createMatcher, parseTarget } from "./paths.js";
 import type { LooseEndsConfig } from "./types.js";
 import { manifestEntries, type WorkspacePackage } from "./workspace.js";
 import { FRAMEWORK_PROVIDERS } from "./frameworks.js";
+import { directiveRoots } from "./directives.js";
 
 export type RootKind = "production" | "tooling" | "test";
 
@@ -111,7 +112,7 @@ export const testRoots: RootProvider = {
   },
 };
 
-export const DEFAULT_PROVIDERS: RootProvider[] = [packageRoots, configRoots, ...FRAMEWORK_PROVIDERS, testRoots];
+export const DEFAULT_PROVIDERS: RootProvider[] = [packageRoots, configRoots, ...FRAMEWORK_PROVIDERS, directiveRoots, testRoots];
 
 /** Run root providers and return de-duplicated roots in a stable order. */
 export function discoverRoots(config: LooseEndsConfig, build: BuildResult, providers: RootProvider[] = DEFAULT_PROVIDERS): Root[] {

@@ -46,7 +46,7 @@ export const DEFAULT_FAIL_ON: FindingKind[] = [
   "invalid-suppression",
 ];
 
-const FINDING_KINDS: readonly FindingKind[] = [
+export const FINDING_KINDS: readonly FindingKind[] = [
   "orphaned-addition",
   "test-only-addition",
   "newly-orphaned",
