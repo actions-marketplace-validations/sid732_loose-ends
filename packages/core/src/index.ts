@@ -42,3 +42,5 @@ export { analyze, classify, label, pathTo, stateOf, summarize } from "./liveness
 export type { Analysis, AnalyzeOptions, Liveness, LivenessSummary, NodeState } from "./liveness.js";
 export { allSuppressions, applyDormant, directiveRoots, inlineSuppressions } from "./directives.js";
 export type { DirectiveProblem, SuppressionRecord } from "./directives.js";
+export { GitError, changedFiles, defaultBase, isGitRepo, mergeBase, repoRoot, revParse, snapshot } from "./git.js";
+export type { ChangeStatus, ChangedFile, Snapshot } from "./git.js";
