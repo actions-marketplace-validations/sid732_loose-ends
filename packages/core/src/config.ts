@@ -55,6 +55,8 @@ export const FINDING_KINDS: readonly FindingKind[] = [
   "unused-dependency",
   "uncertain",
   "invalid-suppression",
+  "orphaned",
+  "test-only",
 ];
 
 const FRAMEWORKS: readonly FrameworkName[] = ["node", "next", "react", "express", "vite", "jest", "vitest", "storybook"];

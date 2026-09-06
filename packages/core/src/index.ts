@@ -44,3 +44,7 @@ export { allSuppressions, applyDormant, directiveRoots, inlineSuppressions } fro
 export type { DirectiveProblem, SuppressionRecord } from "./directives.js";
 export { GitError, changedFiles, defaultBase, isGitRepo, mergeBase, repoRoot, revParse, snapshot } from "./git.js";
 export type { ChangeStatus, ChangedFile, Snapshot } from "./git.js";
+export { SEVERITY, applySuppressions, compareAnalyses, describePath, makeFinding, scanFindings } from "./findings.js";
+export type { CompareOptions, Evidence, Finding, PathStep, SuppressionOutcome } from "./findings.js";
+export { check, scan } from "./check.js";
+export type { CheckContext, CheckOptions, CheckResult, RevisionInfo, ScanOptions } from "./check.js";

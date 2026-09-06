@@ -71,6 +71,10 @@ export type FindingKind =
   /** Code whose liveness depends on dynamic behavior the graph cannot follow. */
   | "uncertain"
   /** A suppression or dormant marker that is missing a reason or has expired. */
-  | "invalid-suppression";
+  | "invalid-suppression"
+  /** Whole-project scan: code no root reaches (existing debt, not tied to a change). */
+  | "orphaned"
+  /** Whole-project scan: production code reachable only from tests. */
+  | "test-only";
 
 export type Severity = "error" | "warning" | "info";
