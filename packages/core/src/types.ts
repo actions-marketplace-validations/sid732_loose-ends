@@ -49,6 +49,8 @@ export interface LooseEndsConfig {
   coverage?: string;
   /** Whether package.json dependencies are analyzed. */
   dependencies: boolean;
+  /** Dependencies that are used implicitly (plugins, peer requirements, CLIs). */
+  ignoreDependencies: string[];
   /** Where the config was loaded from, if anywhere. */
   source?: string;
 }

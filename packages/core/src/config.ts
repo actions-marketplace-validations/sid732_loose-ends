@@ -81,6 +81,7 @@ export function defaultConfig(root: string): LooseEndsConfig {
     checks: [],
     failOn: [...DEFAULT_FAIL_ON],
     dependencies: true,
+    ignoreDependencies: [],
   };
 }
 
@@ -149,12 +150,13 @@ export function parseConfig(raw: unknown, source?: string): RawConfig {
     "tsconfig",
     "coverage",
     "dependencies",
+    "ignoreDependencies",
   ]);
   for (const key of Object.keys(input)) {
     if (!known.has(key)) throw new ConfigError(`unknown option "${key}"`, source);
   }
 
-  for (const key of ["include", "exclude", "extendInclude", "extendExclude", "entries", "testPatterns", "extendTestPatterns", "checks"] as const) {
+  for (const key of ["include", "exclude", "extendInclude", "extendExclude", "entries", "testPatterns", "extendTestPatterns", "checks", "ignoreDependencies"] as const) {
     if (key in input) out[key] = stringArray(input[key], key, source);
   }
   if ("frameworks" in input) {

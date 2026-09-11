@@ -48,3 +48,5 @@ export { SEVERITY, applySuppressions, compareAnalyses, describePath, makeFinding
 export type { CompareOptions, Evidence, Finding, PathStep, SuppressionOutcome } from "./findings.js";
 export { check, scan } from "./check.js";
 export type { CheckContext, CheckOptions, CheckResult, RevisionInfo, ScanOptions } from "./check.js";
+export { dependencyFindings, dependencyReport, scanDependencyFindings } from "./dependencies.js";
+export type { DependencyReport, DependencyUse } from "./dependencies.js";
