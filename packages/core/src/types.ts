@@ -68,6 +68,8 @@ export type FindingKind =
   | "newly-test-only"
   /** An implementation that appears to have been replaced but not removed. */
   | "superseded"
+  /** New code that closely duplicates an existing live implementation. */
+  | "duplicate"
   /** A package dependency no live code imports. */
   | "unused-dependency"
   /** Code whose liveness depends on dynamic behavior the graph cannot follow. */

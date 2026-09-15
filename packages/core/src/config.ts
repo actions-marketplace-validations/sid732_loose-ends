@@ -52,6 +52,7 @@ export const FINDING_KINDS: readonly FindingKind[] = [
   "newly-orphaned",
   "newly-test-only",
   "superseded",
+  "duplicate",
   "unused-dependency",
   "uncertain",
   "invalid-suppression",

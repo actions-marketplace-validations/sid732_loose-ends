@@ -60,6 +60,7 @@ export const SEVERITY: Record<FindingKind, Severity> = {
   "test-only-addition": "warning",
   "newly-test-only": "warning",
   "unused-dependency": "warning",
+  duplicate: "warning",
   uncertain: "info",
   orphaned: "warning",
   "test-only": "info",
@@ -109,7 +110,7 @@ function referencedBy(analysis: Analysis, id: string): string[] {
 }
 
 /** Map base node ids to head ids so renamed files compare as the same code. */
-function renameMap(changed: ChangedFile[]): (baseId: string) => string {
+export function renameMap(changed: ChangedFile[]): (baseId: string) => string {
   const renames = new Map<string, string>();
   for (const c of changed) if (c.status === "renamed" && c.oldPath) renames.set(c.oldPath, c.path);
   if (renames.size === 0) return (id) => id;

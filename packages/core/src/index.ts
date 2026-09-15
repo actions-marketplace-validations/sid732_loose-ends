@@ -18,7 +18,7 @@ export { createMatcher, parseTarget, targetMatches, toRelative } from "./paths.j
 export type { Matcher } from "./paths.js";
 export { discoverFiles } from "./discover.js";
 export type { SourceFile } from "./discover.js";
-export { MODULE_BODY, collectReferences, createSource, parseModule, scriptKindFor } from "./parse.js";
+export { MODULE_BODY, collectReferences, createSource, fingerprint, parseModule, scriptKindFor } from "./parse.js";
 export type { Declaration, DeclarationKind, Directive, DirectiveAction, ImportBinding, ImportKind, ImportRecord, LocalExport, ModuleInfo } from "./parse.js";
 export { Resolver, splitPackage } from "./resolve.js";
 export type { Resolution } from "./resolve.js";
@@ -44,9 +44,11 @@ export { allSuppressions, applyDormant, directiveRoots, inlineSuppressions } fro
 export type { DirectiveProblem, SuppressionRecord } from "./directives.js";
 export { GitError, changedFiles, defaultBase, isGitRepo, mergeBase, repoRoot, revParse, snapshot } from "./git.js";
 export type { ChangeStatus, ChangedFile, Snapshot } from "./git.js";
-export { SEVERITY, applySuppressions, compareAnalyses, describePath, makeFinding, scanFindings } from "./findings.js";
+export { SEVERITY, applySuppressions, compareAnalyses, describePath, makeFinding, renameMap, scanFindings } from "./findings.js";
 export type { CompareOptions, Evidence, Finding, PathStep, SuppressionOutcome } from "./findings.js";
 export { check, scan } from "./check.js";
 export type { CheckContext, CheckOptions, CheckResult, RevisionInfo, ScanOptions } from "./check.js";
 export { dependencyFindings, dependencyReport, scanDependencyFindings } from "./dependencies.js";
 export type { DependencyReport, DependencyUse } from "./dependencies.js";
+export { detectSuperseded, normalizeName, scoreReplacement, similarity } from "./superseded.js";
+export type { Replacement } from "./superseded.js";

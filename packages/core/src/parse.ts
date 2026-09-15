@@ -66,6 +66,10 @@ export interface Declaration {
   end: number;
   /** Number of declarations sharing the same statement, e.g. `const a = 1, b = 2`. */
   statementSize: number;
+  /** Structural fingerprint: hashed shingles of normalized tokens. */
+  shape: number[];
+  /** Number of tokens in the declaration. */
+  tokens: number;
 }
 
 export interface LocalExport {
@@ -165,6 +169,7 @@ export function parseModule(path: string, text: string): ModuleInfo {
         start: statement.getStart(sf),
         end: statement.end,
         statementSize: names.length,
+        ...fingerprint(sf.text.slice(statement.getStart(sf), statement.end), sf.languageVariant),
       });
     }
   };
@@ -479,4 +484,41 @@ function collectDirectives(sf: ts.SourceFile, text: string, declarations: Declar
     }
   }
   return out;
+}
+
+const SHINGLE = 4;
+
+/**
+ * Normalize a declaration's tokens (identifiers and literals collapse to
+ * placeholders) and hash overlapping 4-token windows. Two implementations of
+ * the same logic share most shingles even after renames.
+ */
+export function fingerprint(text: string, variant: ts.LanguageVariant = ts.LanguageVariant.Standard): { shape: number[]; tokens: number } {
+  const scanner = ts.createScanner(ts.ScriptTarget.Latest, true, variant, text);
+  const tokens: string[] = [];
+  for (let kind = scanner.scan(); kind !== ts.SyntaxKind.EndOfFileToken; kind = scanner.scan()) {
+    if (kind === ts.SyntaxKind.Identifier) tokens.push("$i");
+    else if (
+      kind === ts.SyntaxKind.StringLiteral ||
+      kind === ts.SyntaxKind.NumericLiteral ||
+      kind === ts.SyntaxKind.NoSubstitutionTemplateLiteral ||
+      kind === ts.SyntaxKind.TemplateHead ||
+      kind === ts.SyntaxKind.BigIntLiteral
+    )
+      tokens.push("$l");
+    else tokens.push(String(kind));
+  }
+  const shape = new Set<number>();
+  for (let i = 0; i + SHINGLE <= tokens.length; i++) shape.add(fnv(tokens.slice(i, i + SHINGLE).join(" ")));
+  if (tokens.length > 0 && tokens.length < SHINGLE) shape.add(fnv(tokens.join(" ")));
+  return { shape: [...shape].sort((a, b) => a - b), tokens: tokens.length };
+}
+
+function fnv(text: string): number {
+  let hash = 0x811c9dc5;
+  for (let i = 0; i < text.length; i++) {
+    hash ^= text.charCodeAt(i);
+    hash = Math.imul(hash, 0x01000193);
+  }
+  return hash >>> 0;
 }

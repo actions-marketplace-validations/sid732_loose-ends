@@ -2,7 +2,8 @@ import type { ChangedFile, Snapshot } from "./git.js";
 import { changedFiles, defaultBase, isGitRepo, mergeBase, revParse, snapshot } from "./git.js";
 import { loadConfig } from "./config.js";
 import { dependencyFindings, scanDependencyFindings } from "./dependencies.js";
-import { applySuppressions, compareAnalyses, scanFindings, type Finding } from "./findings.js";
+import { applySuppressions, compareAnalyses, renameMap, scanFindings, type Finding } from "./findings.js";
+import { detectSuperseded } from "./superseded.js";
 import { analyze, summarize, type Analysis, type AnalyzeOptions, type LivenessSummary } from "./liveness.js";
 import type { FindingKind, LooseEndsConfig } from "./types.js";
 
@@ -79,6 +80,7 @@ export function check(options: CheckOptions & { keepAnalyses?: boolean }): Check
     const head = analyze({ ...config, root: headRoot }, options.analyze);
     const changed = changedFiles(config.root, baseCommit, headRef);
     let findings = compareAnalyses(base, head, { changed });
+    findings = detectSuperseded(base, head, changed, findings, renameMap(changed));
     findings = [...findings, ...dependencyFindings(base, head)];
     if (options.extend) findings = [...findings, ...options.extend({ config, base, head, changed, findings })];
     const { invalid } = applySuppressions(head, findings);
