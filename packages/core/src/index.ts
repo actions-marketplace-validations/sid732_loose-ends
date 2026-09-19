@@ -52,3 +52,5 @@ export { dependencyFindings, dependencyReport, scanDependencyFindings } from "./
 export type { DependencyReport, DependencyUse } from "./dependencies.js";
 export { detectSuperseded, normalizeName, scoreReplacement, similarity } from "./superseded.js";
 export type { Replacement } from "./superseded.js";
+export { explain, findNode } from "./explain.js";
+export type { Explanation, Reference } from "./explain.js";
