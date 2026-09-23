@@ -54,3 +54,7 @@ export { detectSuperseded, normalizeName, scoreReplacement, similarity } from ".
 export type { Replacement } from "./superseded.js";
 export { explain, findNode } from "./explain.js";
 export type { Explanation, Reference } from "./explain.js";
+export { formatExplanation, formatText } from "./report/text.js";
+export type { TextOptions } from "./report/text.js";
+export { JSON_REPORT_VERSION, formatJson, toJsonReport } from "./report/json.js";
+export { TOOL, evidenceLines, formatPath, location } from "./report/common.js";
