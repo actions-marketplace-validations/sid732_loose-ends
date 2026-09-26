@@ -56,3 +56,40 @@ describe("json reporter", () => {
     expect(report.config.root).toBeUndefined();
   });
 });
+
+import { MARKDOWN_MARKER, RULES, formatMarkdown, formatReport, toSarif } from "@loose-ends/core";
+
+describe("markdown reporter", () => {
+  it("renders a PR comment with a marker, table, and evidence", () => {
+    const md = formatMarkdown(failingResult(), { linkBase: "https://github.com/o/r/blob/abc/" });
+    expect(md.startsWith(MARKDOWN_MARKER)).toBe(true);
+    expect(md).toContain("## ❌ Loose Ends: 2 new loose ends");
+    expect(md).toContain("| 🔴 | `newly-orphaned` | [`src/b.ts:1`](https://github.com/o/r/blob/abc/src/b.ts#L1) |");
+    expect(md).toContain("**(blocking)**");
+    expect(md).toContain("<details><summary>Evidence</summary>");
+    expect(md).toContain("- edge removed: src/a.ts → src/b.ts");
+  });
+
+  it("renders a clean pass", () => {
+    expect(formatMarkdown(check({ root: repo(base) }))).toContain("## ✅ Loose Ends: No new loose ends");
+  });
+});
+
+describe("sarif reporter", () => {
+  it("emits SARIF 2.1.0 with rules, locations, and fingerprints", () => {
+    const sarif = toSarif(failingResult(), { pathPrefix: "apps/web" });
+    const run = sarif.runs[0]!;
+    expect(sarif.version).toBe("2.1.0");
+    expect(run.tool.driver.rules.map((r) => r.id)).toEqual(Object.keys(RULES));
+    const result = run.results[0]!;
+    expect(result).toMatchObject({ ruleId: "newly-orphaned", level: "error" });
+    expect(result.locations[0]?.physicalLocation.artifactLocation.uri).toBe("apps/web/src/b.ts");
+    expect(result.partialFingerprints["looseEnds/v1"]).toMatch(/^[0-9a-f]{12}$/);
+  });
+
+  it("dispatches through formatReport", () => {
+    const r = failingResult();
+    expect(JSON.parse(formatReport(r, "sarif")).version).toBe("2.1.0");
+    expect(formatReport(r, "markdown")).toContain(MARKDOWN_MARKER);
+  });
+});

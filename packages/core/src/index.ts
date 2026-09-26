@@ -58,3 +58,31 @@ export { formatExplanation, formatText } from "./report/text.js";
 export type { TextOptions } from "./report/text.js";
 export { JSON_REPORT_VERSION, formatJson, toJsonReport } from "./report/json.js";
 export { TOOL, evidenceLines, formatPath, location } from "./report/common.js";
+export { MARKDOWN_MARKER, formatMarkdown } from "./report/markdown.js";
+export type { MarkdownOptions } from "./report/markdown.js";
+export { formatSarif, toSarif } from "./report/sarif.js";
+export type { SarifOptions } from "./report/sarif.js";
+export { RULES } from "./report/rules.js";
+
+import type { CheckResult } from "./check.js";
+import { formatJson } from "./report/json.js";
+import { formatMarkdown } from "./report/markdown.js";
+import { formatSarif } from "./report/sarif.js";
+import { formatText } from "./report/text.js";
+
+export type ReportFormat = "text" | "json" | "markdown" | "sarif";
+export const REPORT_FORMATS: ReportFormat[] = ["text", "json", "markdown", "sarif"];
+
+/** Render a result in any supported format. */
+export function formatReport(result: CheckResult, format: ReportFormat, options: { color?: boolean; linkBase?: string; pathPrefix?: string } = {}): string {
+  switch (format) {
+    case "json":
+      return formatJson(result);
+    case "markdown":
+      return formatMarkdown(result, { linkBase: options.linkBase });
+    case "sarif":
+      return formatSarif(result, { pathPrefix: options.pathPrefix });
+    default:
+      return formatText(result, { color: options.color });
+  }
+}
