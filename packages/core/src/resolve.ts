@@ -8,7 +8,7 @@ import type { LooseEndsConfig } from "./types.js";
 import { discoverPackages, resolveExports, type WorkspacePackage } from "./workspace.js";
 
 export type Resolution =
-  | { kind: "file"; path: string }
+  | { kind: "file"; path: string; /** Workspace package the file belongs to, when imported by name. */ package?: string }
   | { kind: "external"; package: string; builtin: boolean }
   | { kind: "asset"; path: string }
   | { kind: "unresolved"; specifier: string };
@@ -79,7 +79,7 @@ export class Resolver {
     const workspace = this.byName.get(name);
     if (workspace) {
       const target = this.resolveWorkspace(workspace, subpath);
-      if (target) return { kind: "file", path: target };
+      if (target) return { kind: "file", path: target, package: name };
     }
     return { kind: "external", package: name, builtin: false };
   }

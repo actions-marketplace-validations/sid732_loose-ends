@@ -48,9 +48,9 @@ describe("Resolver", () => {
       "packages/utils/src/fmt.mts": "",
       "apps/web/main.ts": "",
     });
-    expect(r.resolve("apps/web/main.ts", "@acme/ui")).toEqual({ kind: "file", path: "packages/ui/src/index.ts" });
-    expect(r.resolve("apps/web/main.ts", "@acme/utils")).toEqual({ kind: "file", path: "packages/utils/src/index.ts" });
-    expect(r.resolve("apps/web/main.ts", "@acme/utils/fmt")).toEqual({ kind: "file", path: "packages/utils/src/fmt.mts" });
+    expect(r.resolve("apps/web/main.ts", "@acme/ui")).toEqual({ kind: "file", path: "packages/ui/src/index.ts", package: "@acme/ui" });
+    expect(r.resolve("apps/web/main.ts", "@acme/utils")).toEqual({ kind: "file", path: "packages/utils/src/index.ts", package: "@acme/utils" });
+    expect(r.resolve("apps/web/main.ts", "@acme/utils/fmt")).toEqual({ kind: "file", path: "packages/utils/src/fmt.mts", package: "@acme/utils" });
   });
 
   it("reads pnpm workspaces", () => {
@@ -61,7 +61,7 @@ describe("Resolver", () => {
       "libs/core/index.js": "",
       "app.js": "",
     });
-    expect(r.resolve("app.js", "core-lib")).toEqual({ kind: "file", path: "libs/core/index.js" });
+    expect(r.resolve("app.js", "core-lib")).toEqual({ kind: "file", path: "libs/core/index.js", package: "core-lib" });
   });
 });
 

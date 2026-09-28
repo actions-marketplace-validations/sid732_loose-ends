@@ -231,6 +231,11 @@ class Linker {
     }
 
     const targetFile = fileId(target.path);
+    if (target.package) {
+      // Importing a workspace package by name is a use of that dependency.
+      const dep = this.dependency(target.package, false);
+      this.graph.addEdge({ from: record.owner === MODULE_BODY ? from : owner, to: dep, kind: "dependency", line: record.line });
+    }
     switch (record.kind) {
       case "static":
       case "side-effect":

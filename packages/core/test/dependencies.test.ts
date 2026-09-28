@@ -37,6 +37,18 @@ describe("dependencyReport", () => {
     const report = dependencyReport(analyze(loadConfig(root))).map((r) => `${r.manifest} ${r.name} ${r.use}`);
     expect(report).toEqual(["package.json zod unused", "packages/a/package.json ms unused", "packages/a/package.json zod live"]);
   });
+
+  it("counts imports of workspace packages as dependency use", () => {
+    const root = project({
+      "package.json": { name: "root", workspaces: ["packages/*"] },
+      "packages/core/package.json": { name: "@x/core", main: "src/index.ts" },
+      "packages/core/src/index.ts": "export const core = 1;",
+      "packages/cli/package.json": { name: "@x/cli", bin: { x: "src/bin.ts" }, dependencies: { "@x/core": "1" } },
+      "packages/cli/src/bin.ts": "import { core } from '@x/core';\nconsole.log(core);",
+    });
+    const report = dependencyReport(analyze(loadConfig(root))).map((r) => `${r.name} ${r.use}`);
+    expect(report).toEqual(["@x/core live"]);
+  });
 });
 
 describe("dependency findings in check", () => {
