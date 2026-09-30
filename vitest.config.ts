@@ -7,6 +7,7 @@ export default defineConfig({
   resolve: {
     alias: {
       "@loose-ends/core": pkg("core"),
+      "loose-ends": pkg("cli"),
     },
   },
   test: {
