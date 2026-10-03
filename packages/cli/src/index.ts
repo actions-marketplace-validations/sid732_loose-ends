@@ -1,6 +1,7 @@
 import { ConfigError, GitError, VERSION } from "@loose-ends/core";
 import { Command, CommanderError } from "commander";
 import { registerCheck, UsageError } from "./commands/check.js";
+import { registerInspect } from "./commands/inspect.js";
 import { processIO, type CliIO } from "./io.js";
 
 export type { CliIO } from "./io.js";
@@ -14,6 +15,7 @@ export function createProgram(io: CliIO, setExit: (code: number) => void): Comma
     .exitOverride()
     .showHelpAfterError();
   registerCheck(program, io, setExit);
+  registerInspect(program, io, setExit);
   return program;
 }
 
