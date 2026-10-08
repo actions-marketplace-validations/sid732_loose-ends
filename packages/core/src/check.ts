@@ -1,6 +1,7 @@
 import type { ChangedFile, Snapshot } from "./git.js";
 import { changedFiles, defaultBase, isGitRepo, mergeBase, revParse, snapshot } from "./git.js";
 import { loadConfig } from "./config.js";
+import { annotateCoverage, loadCoverage } from "./coverage.js";
 import { dependencyFindings, scanDependencyFindings } from "./dependencies.js";
 import { applySuppressions, compareAnalyses, renameMap, scanFindings, type Finding } from "./findings.js";
 import { detectSuperseded } from "./superseded.js";
@@ -85,6 +86,7 @@ export function check(options: CheckOptions & { keepAnalyses?: boolean }): Check
     if (options.extend) findings = [...findings, ...options.extend({ config, base, head, changed, findings })];
     const { invalid } = applySuppressions(head, findings);
     findings = [...findings, ...invalid];
+    if (config.coverage) annotateCoverage(findings, loadCoverage(config.root, config.coverage), config.coverage);
     return finish({
       mode: "check",
       config,
@@ -116,6 +118,7 @@ export function scan(options: ScanOptions & { keepAnalyses?: boolean }): CheckRe
   if (options.extend) findings = [...findings, ...options.extend(head, findings)];
   const { invalid } = applySuppressions(head, findings);
   findings = [...findings, ...invalid];
+  if (config.coverage) annotateCoverage(findings, loadCoverage(config.root, config.coverage), config.coverage);
   return finish({
     mode: "scan",
     config,

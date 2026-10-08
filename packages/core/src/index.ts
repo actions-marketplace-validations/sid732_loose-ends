@@ -86,3 +86,5 @@ export function formatReport(result: CheckResult, format: ReportFormat, options:
       return formatText(result, { color: options.color });
   }
 }
+export { CoverageError, annotateCoverage, hitsFor, loadCoverage, parseIstanbul, parseLcov } from "./coverage.js";
+export type { CoverageMap } from "./coverage.js";

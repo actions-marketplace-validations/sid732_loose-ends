@@ -1,4 +1,4 @@
-import { ConfigError, GitError, VERSION } from "@loose-ends/core";
+import { ConfigError, CoverageError, GitError, VERSION } from "@loose-ends/core";
 import { Command, CommanderError } from "commander";
 import { registerCheck, UsageError } from "./commands/check.js";
 import { registerInspect } from "./commands/inspect.js";
@@ -28,7 +28,7 @@ export async function run(argv: string[], io: CliIO = processIO()): Promise<numb
     return code;
   } catch (error) {
     if (error instanceof CommanderError) return error.exitCode === 0 ? 0 : 2;
-    const known = error instanceof UsageError || error instanceof ConfigError || error instanceof GitError;
+    const known = error instanceof UsageError || error instanceof ConfigError || error instanceof GitError || error instanceof CoverageError;
     const message = error instanceof Error ? error.message : String(error);
     io.stderr(`loose-ends: ${message}\n`);
     if (!known && io.env.LOOSE_ENDS_DEBUG && error instanceof Error) io.stderr(`${error.stack}\n`);
