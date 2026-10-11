@@ -1,6 +1,7 @@
 import { ConfigError, CoverageError, GitError, VERSION } from "@loose-ends/core";
 import { Command, CommanderError } from "commander";
 import { registerCheck, UsageError } from "./commands/check.js";
+import { registerFix } from "./commands/fix.js";
 import { registerInspect } from "./commands/inspect.js";
 import { processIO, type CliIO } from "./io.js";
 
@@ -16,6 +17,7 @@ export function createProgram(io: CliIO, setExit: (code: number) => void): Comma
     .showHelpAfterError();
   registerCheck(program, io, setExit);
   registerInspect(program, io, setExit);
+  registerFix(program, io, setExit);
   return program;
 }
 

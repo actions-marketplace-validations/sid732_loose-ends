@@ -88,3 +88,5 @@ export function formatReport(result: CheckResult, format: ReportFormat, options:
 }
 export { CoverageError, annotateCoverage, hitsFor, loadCoverage, parseIstanbul, parseLcov } from "./coverage.js";
 export type { CoverageMap } from "./coverage.js";
+export { applyCleanup, cleanupPatch, planCleanup, verifyCleanup } from "./cleanup.js";
+export type { CheckRun, CleanupAction, CleanupPlan, Verification } from "./cleanup.js";
