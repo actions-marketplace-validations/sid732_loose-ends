@@ -1,0 +1,29 @@
+{
+  "name": "@loose-ends/mcp",
+  "version": "0.1.0",
+  "description": "MCP server that lets coding agents check their changes for loose ends.",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "loose-ends-mcp": "./dist/bin.js"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -b"
+  },
+  "dependencies": {
+    "@loose-ends/core": "0.1.0",
+    "@modelcontextprotocol/sdk": "^1.32.0",
+    "zod": "^4.0.0"
+  }
+}

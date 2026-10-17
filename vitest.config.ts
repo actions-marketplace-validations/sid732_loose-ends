@@ -8,6 +8,7 @@ export default defineConfig({
     alias: {
       "@loose-ends/core": pkg("core"),
       "loose-ends": pkg("cli"),
+      "@loose-ends/mcp": pkg("mcp"),
     },
   },
   test: {
