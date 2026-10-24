@@ -9,6 +9,9 @@
     },
     {
       "path": "packages/mcp"
+    },
+    {
+      "path": "packages/github-app"
     }
   ]
 }
