@@ -1,0 +1,56 @@
+name: Loose Ends
+description: Graph-powered liveness checks for AI-written code. Fails when a pull request leaves orphaned, superseded, or unconnected code.
+branding:
+  icon: git-merge
+  color: orange
+inputs:
+  working-directory:
+    description: Project root inside the repository.
+    default: "."
+  base:
+    description: Base revision. Defaults to the pull request base, or the merge base with the default branch.
+    default: ""
+  fail-on:
+    description: Comma-separated finding kinds that fail the job. Defaults to the project config.
+    default: ""
+  sarif:
+    description: Path to write a SARIF report for upload to code scanning. Empty to skip.
+    default: loose-ends.sarif
+outputs:
+  passed:
+    description: "\"true\" when no blocking findings were found."
+    value: ${{ steps.check.outputs.passed }}
+  sarif:
+    description: Path of the SARIF report, when written.
+    value: ${{ inputs.sarif }}
+runs:
+  using: composite
+  steps:
+    - name: Build Loose Ends
+      shell: bash
+      working-directory: ${{ github.action_path }}
+      run: npm ci --ignore-scripts --no-audit --no-fund && npx tsc -b packages/cli
+    - name: Check for loose ends
+      id: check
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      env:
+        LE_BIN: ${{ github.action_path }}/packages/cli/dist/bin.js
+        LE_BASE: ${{ inputs.base || github.event.pull_request.base.sha }}
+        LE_FAIL_ON: ${{ inputs.fail-on }}
+        LE_SARIF: ${{ inputs.sarif }}
+        LE_LINK: ${{ github.server_url }}/${{ github.repository }}/blob/${{ github.sha }}/
+      run: |
+        set +e
+        args=(check .)
+        [ -n "$LE_BASE" ] && args+=(--base "$LE_BASE")
+        [ -n "$LE_FAIL_ON" ] && args+=(--fail-on "$LE_FAIL_ON")
+        prefix="$(git rev-parse --show-prefix)"
+        node "$LE_BIN" "${args[@]}" --format markdown --link-base "$LE_LINK$prefix" --no-fail >> "$GITHUB_STEP_SUMMARY"
+        if [ -n "$LE_SARIF" ]; then
+          node "$LE_BIN" "${args[@]}" --format sarif --path-prefix "$prefix" --output "$LE_SARIF" --no-fail
+        fi
+        node "$LE_BIN" "${args[@]}"
+        code=$?
+        echo "passed=$([ $code -eq 0 ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+        exit $code

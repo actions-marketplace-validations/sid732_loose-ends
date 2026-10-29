@@ -1,0 +1,16 @@
+# GitHub App manifest. Create the app from it at
+# https://github.com/settings/apps/new (or your organization's equivalent).
+name: Loose Ends
+description: Graph-powered liveness checks for AI-written code. Every change should lead somewhere.
+url: https://github.com/sid732/loose-ends
+hook_attributes:
+  url: https://YOUR-HOST/api/github/webhooks
+public: false
+default_events:
+  - pull_request
+default_permissions:
+  checks: write
+  contents: read
+  issues: write
+  metadata: read
+  pull_requests: read
