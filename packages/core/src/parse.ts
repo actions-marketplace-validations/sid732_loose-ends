@@ -111,6 +111,8 @@ export interface ModuleInfo {
   hasUnresolvableDynamic: boolean;
   /** Uses CommonJS `module.exports` or `exports.x`. */
   commonjs: boolean;
+  /** Contains JSX, which implicitly imports the JSX runtime (react/jsx-runtime by default). */
+  jsx: boolean;
   /** Number of source lines. */
   lines: number;
 }
@@ -138,6 +140,7 @@ export function parseModule(path: string, text: string): ModuleInfo {
     bodyReferences: [],
     hasUnresolvableDynamic: false,
     commonjs: false,
+    jsx: false,
     lines: sf.getLineAndCharacterOfPosition(sf.end).line + 1,
   };
   const lineOf = (node: ts.Node) => sf.getLineAndCharacterOfPosition(node.getStart(sf)).line + 1;
@@ -253,6 +256,7 @@ export function parseModule(path: string, text: string): ModuleInfo {
     if (decl && !decl.exportedAs.includes(exp.exported)) decl.exportedAs.push(exp.exported);
   }
   info.directives = collectDirectives(sf, text, info.declarations);
+  info.jsx = sf.languageVariant === ts.LanguageVariant.JSX && containsJsx(sf);
   info.bodyReferences = [...bodyRefs].sort();
   info.hasUnresolvableDynamic = info.imports.some((i) => (i.kind === "dynamic" || i.kind === "require") && i.specifier === "");
   return info;
@@ -521,4 +525,9 @@ function fnv(text: string): number {
     hash = Math.imul(hash, 0x01000193);
   }
   return hash >>> 0;
+}
+
+function containsJsx(node: ts.Node): boolean {
+  if (ts.isJsxElement(node) || ts.isJsxSelfClosingElement(node) || ts.isJsxFragment(node)) return true;
+  return ts.forEachChild(node, containsJsx) ?? false;
 }

@@ -38,6 +38,15 @@ describe("dependencyReport", () => {
     expect(report).toEqual(["package.json zod unused", "packages/a/package.json ms unused", "packages/a/package.json zod live"]);
   });
 
+  it("counts JSX as use of the JSX runtime", () => {
+    const root = project({
+      "package.json": { name: "ui", main: "index.tsx", dependencies: { react: "19", preact: "10" } },
+      "index.tsx": "export const App = () => <div />;",
+    });
+    const uses = Object.fromEntries(dependencyReport(analyze(loadConfig(root))).map((r) => [r.name, r.use]));
+    expect(uses).toEqual({ preact: "live", react: "live" });
+  });
+
   it("counts imports of workspace packages as dependency use", () => {
     const root = project({
       "package.json": { name: "root", workspaces: ["packages/*"] },

@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { dependencyId } from "./graph.js";
+import { dependencyId, fileId } from "./graph.js";
 import { makeFinding, type Finding } from "./findings.js";
 import { stateOf, type Analysis } from "./liveness.js";
 import { createMatcher } from "./paths.js";
@@ -32,6 +32,9 @@ const IMPLICIT = [
   "server-only",
   "client-only",
 ];
+
+/** Packages the compiler imports on behalf of JSX (`jsxImportSource`). */
+const JSX_RUNTIMES = ["react", "preact", "solid-js", "@emotion/react", "hono"];
 
 export type DependencyUse = "live" | "test-only" | "script" | "unused" | "ignored";
 
@@ -69,10 +72,9 @@ export function dependencyReport(analysis: Analysis): DependencyReport[] {
 
 function usage(analysis: Analysis, pkg: WorkspacePackage, nested: string[], name: string): DependencyUse {
   const id = dependencyId(name);
-  if (!analysis.graph.nodes.has(id)) return "unused";
   const prefix = pkg.dir ? pkg.dir + "/" : "";
   let testOnly = false;
-  for (const edge of analysis.graph.in(id)) {
+  for (const edge of analysis.graph.nodes.has(id) ? analysis.graph.in(id) : []) {
     const from = analysis.graph.nodes.get(edge.from);
     const file = from?.file;
     if (!file || !file.startsWith(prefix)) continue;
@@ -81,6 +83,14 @@ function usage(analysis: Analysis, pkg: WorkspacePackage, nested: string[], name
     const state = stateOf(analysis, edge.from).liveness;
     if (state === "live" || state === "uncertain") return "live";
     if (state === "test-only") testOnly = true;
+  }
+  if (JSX_RUNTIMES.includes(name)) {
+    for (const [file, info] of analysis.graph.modules) {
+      if (!info.jsx || !file.startsWith(prefix)) continue;
+      const state = stateOf(analysis, fileId(file)).liveness;
+      if (state === "live" || state === "uncertain") return "live";
+      if (state === "test-only") testOnly = true;
+    }
   }
   return testOnly ? "test-only" : "unused";
 }
