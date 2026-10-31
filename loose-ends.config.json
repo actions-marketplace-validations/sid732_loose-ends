@@ -1,0 +1,5 @@
+{
+  "$schema": "./schema/config.schema.json",
+  "extendExclude": ["examples/**"],
+  "checks": ["npm run build", "npm test"]
+}

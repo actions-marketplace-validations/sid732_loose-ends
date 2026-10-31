@@ -1,0 +1,10 @@
+{
+  "name": "@example/ui",
+  "version": "0.0.0",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "react": "^19.0.0"
+  }
+}

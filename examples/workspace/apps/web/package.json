@@ -1,0 +1,9 @@
+{
+  "name": "web",
+  "private": true,
+  "main": "src/main.tsx",
+  "dependencies": {
+    "@example/ui": "*",
+    "react": "^19.0.0"
+  }
+}
