@@ -1,0 +1,69 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/sid732/loose-ends/main/schema/config.schema.json",
+  "title": "Loose Ends configuration",
+  "type": "object",
+  "additionalProperties": false,
+  "$defs": {
+    "globs": { "type": "array", "items": { "type": "string" } },
+    "kind": {
+      "enum": [
+        "orphaned-addition",
+        "test-only-addition",
+        "newly-orphaned",
+        "newly-test-only",
+        "superseded",
+        "duplicate",
+        "unused-dependency",
+        "uncertain",
+        "invalid-suppression",
+        "orphaned",
+        "test-only"
+      ]
+    },
+    "rule": {
+      "type": "object",
+      "required": ["target", "reason"],
+      "properties": {
+        "target": { "type": "string", "minLength": 1, "description": "File glob or path#symbol." },
+        "reason": { "type": "string", "minLength": 1, "pattern": "\\S" }
+      }
+    }
+  },
+  "properties": {
+    "$schema": { "type": "string" },
+    "include": { "$ref": "#/$defs/globs", "description": "Replace the default source globs." },
+    "extendInclude": { "$ref": "#/$defs/globs", "description": "Add to the default source globs." },
+    "exclude": { "$ref": "#/$defs/globs", "description": "Replace the default exclusions." },
+    "extendExclude": { "$ref": "#/$defs/globs", "description": "Add to the default exclusions." },
+    "testPatterns": { "$ref": "#/$defs/globs", "description": "Replace the default test file globs." },
+    "extendTestPatterns": { "$ref": "#/$defs/globs", "description": "Add to the default test file globs." },
+    "entries": { "$ref": "#/$defs/globs", "description": "Extra production entry points: file globs or path#symbol." },
+    "frameworks": {
+      "oneOf": [
+        { "const": "auto" },
+        { "type": "array", "items": { "enum": ["node", "next", "react", "express", "vite", "jest", "vitest", "storybook"] } }
+      ]
+    },
+    "dormant": { "type": "array", "items": { "$ref": "#/$defs/rule" } },
+    "suppressions": {
+      "type": "array",
+      "items": {
+        "allOf": [{ "$ref": "#/$defs/rule" }],
+        "properties": {
+          "target": true,
+          "reason": true,
+          "kind": { "$ref": "#/$defs/kind" },
+          "expires": { "type": "string", "format": "date" }
+        },
+        "unevaluatedProperties": false
+      }
+    },
+    "checks": { "type": "array", "items": { "type": "string" }, "description": "Commands that verify a cleanup, e.g. npm test." },
+    "failOn": { "type": "array", "items": { "$ref": "#/$defs/kind" } },
+    "tsconfig": { "type": "string" },
+    "coverage": { "type": "string", "description": "istanbul coverage-final.json or lcov.info, relative to the project root." },
+    "dependencies": { "type": "boolean", "default": true },
+    "ignoreDependencies": { "$ref": "#/$defs/globs" }
+  }
+}

@@ -16,7 +16,8 @@
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "README.md"
   ],
   "scripts": {
     "build": "tsc -b"
@@ -25,5 +26,13 @@
     "@loose-ends/core": "0.1.0",
     "@modelcontextprotocol/sdk": "^1.32.0",
     "zod": "^4.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sid732/loose-ends.git",
+    "directory": "packages/mcp"
+  },
+  "engines": {
+    "node": ">=20"
   }
 }

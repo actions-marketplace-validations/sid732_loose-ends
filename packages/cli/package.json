@@ -16,7 +16,8 @@
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "README.md"
   ],
   "keywords": [
     "dead-code",
@@ -32,5 +33,13 @@
   "dependencies": {
     "@loose-ends/core": "0.1.0",
     "commander": "^14.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sid732/loose-ends.git",
+    "directory": "packages/cli"
+  },
+  "engines": {
+    "node": ">=20"
   }
 }

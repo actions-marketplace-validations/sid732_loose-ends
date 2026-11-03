@@ -13,7 +13,8 @@
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "README.md"
   ],
   "scripts": {
     "build": "tsc -b"
@@ -26,5 +27,13 @@
   },
   "devDependencies": {
     "@types/picomatch": "^4.0.3"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sid732/loose-ends.git",
+    "directory": "packages/core"
+  },
+  "engines": {
+    "node": ">=20"
   }
 }
