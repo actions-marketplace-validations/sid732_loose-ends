@@ -6,3 +6,4 @@ coverage/
 *.tsbuildinfo
 .loose-ends-cache/
 .env
+loose-ends.sarif
