@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join, posix } from "node:path";
 import { createMatcher } from "./paths.js";
 import type { RootContext, RootProvider } from "./roots.js";
@@ -186,11 +186,86 @@ export const toolConfigRoots: RootProvider = {
     const match = createMatcher(globs);
     for (const file of ctx.files.filter(match)) {
       ctx.addFile(file, { kind: "tooling", source: "tool-config", reason: "tool configuration file" }, "all");
+      addConfigReferences(ctx, file, readText(join(ctx.config.root, file)));
+    }
+    // JSON configs (.oxlintrc.json, registry.json, .babelrc, ...) at each package root.
+    for (const dir of dirs) {
+      const abs = join(ctx.config.root, dir);
+      let entries: string[] = [];
+      try {
+        entries = readdirSync(abs);
+      } catch {
+        continue;
+      }
+      for (const name of entries) {
+        if (!JSON_CONFIG.test(name) || JSON_SKIP.has(name)) continue;
+        const path = join(abs, name);
+        try {
+          if (!statSync(path).isFile() || statSync(path).size > 8 * 1024 * 1024) continue;
+        } catch {
+          continue;
+        }
+        addConfigReferences(ctx, join2(dir, name), readText(path));
+      }
     }
   },
 };
 
-export const FRAMEWORK_PROVIDERS: RootProvider[] = [nextRoots, viteRoots, storybookRoots, serverlessRoots, toolConfigRoots];
+const JSON_CONFIG = /^(\.[\w.-]+rc(\.json)?|[\w.-]+\.json)$/;
+// Configs that name files without loading them (our own suppressions, knip ignore lists) are skipped.
+const JSON_SKIP = new Set(["package.json", "package-lock.json", "composer.json", "tsconfig.json", "jsconfig.json", "loose-ends.config.json", ".loose-endsrc.json", "knip.json"]);
+const TEST_CONFIG = /^(\.?(vitest|jest|playwright|cypress|karma|ava|mocha|wdio|web-test-runner)\b|\.mocharc)/;
+const PATH_LIKE = /["'`]((?:\.{1,2}\/|[\w@-]+\/)[^"'`\s*{}$]{1,200}|[\w.-]+\.(?:[cm]?[jt]sx?))["'`]/g;
+
+function readText(abs: string): string {
+  try {
+    return readFileSync(abs, "utf8");
+  } catch {
+    return "";
+  }
+}
+
+/**
+ * Tools load files named in their config (`setupFiles: ["./setup.ts"]`,
+ * plugin paths, service workers). String literals that resolve to project
+ * files become roots: test roots for test-runner configs, tooling otherwise.
+ */
+export function addConfigReferences(ctx: RootContext, configFile: string, text: string): void {
+  const dir = posix.dirname(configFile) === "." ? "" : posix.dirname(configFile);
+  const kind = TEST_CONFIG.test(posix.basename(configFile)) ? "test" : "tooling";
+  const seen = new Set<string>();
+  for (const match of text.matchAll(PATH_LIKE)) {
+    const literal = match[1]!.replace(/^\.\//, "");
+    if (seen.has(literal) || /^(https?:|node:)/.test(literal)) continue;
+    seen.add(literal);
+    const file = ctx.build.resolver.resolveEntry(dir, literal);
+    if (!file || file === configFile) continue;
+    ctx.addFile(file, { kind, source: `config:${configFile}`, reason: `referenced by ${configFile}` }, "all");
+  }
+}
+
+/** Docusaurus loads its config, sidebars, pages, and swizzled theme components by convention. */
+export const docusaurusRoots: RootProvider = {
+  name: "docusaurus",
+  discover(ctx) {
+    for (const pkg of ctx.build.resolver.packages) {
+      const deps = { ...pkg.manifest.dependencies, ...pkg.manifest.devDependencies };
+      if (!("@docusaurus/core" in deps)) continue;
+      const match = createMatcher([
+        join2(pkg.dir, `{docusaurus.config,sidebars}.${EXT}`),
+        join2(pkg.dir, `src/pages/**/*.${EXT}`),
+        join2(pkg.dir, `src/theme/**/*.${EXT}`),
+        join2(pkg.dir, `src/clientModules/**/*.${EXT}`),
+      ]);
+      for (const file of ctx.files.filter(match)) {
+        ctx.addFile(file, { kind: "production", source: "framework:docusaurus", reason: "Docusaurus convention file" }, "all");
+        if (/docusaurus\.config\./.test(file)) addConfigReferences(ctx, file, readText(join(ctx.config.root, file)));
+      }
+    }
+  },
+};
+
+export const FRAMEWORK_PROVIDERS: RootProvider[] = [nextRoots, viteRoots, storybookRoots, serverlessRoots, docusaurusRoots, toolConfigRoots];
 
 function eachPackage(ctx: RootContext, framework: FrameworkName, fn: (pkg: WorkspacePackage) => void) {
   const packages = ctx.build.resolver.packages;

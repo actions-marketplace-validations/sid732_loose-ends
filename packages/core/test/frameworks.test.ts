@@ -74,3 +74,42 @@ describe("framework roots", () => {
     expect(nodes).not.toContain(fileId("apps/api/app/page.tsx"));
   });
 });
+
+describe("config references", () => {
+  it("roots files named in tool config strings", () => {
+    const config = loadConfig(
+      project({
+        "package.json": { name: "app", main: "src/index.ts" },
+        "src/index.ts": "",
+        "vitest.config.ts": `export default { test: { setupFiles: ["./setupTests.ts"], globalSetup: "test/global.ts" } };`,
+        "vite.config.mts": `export default { plugins: [pwa({ swSrc: "public/service-worker.js" })] };`,
+        ".oxlintrc.json": { jsPlugins: ["./tools/lint-plugin.ts"] },
+        "setupTests.ts": "",
+        "test/global.ts": "",
+        "public/service-worker.js": "",
+        "tools/lint-plugin.ts": "",
+        "src/unused.ts": "",
+      }),
+    );
+    const roots = discoverRoots(config, buildGraph(config));
+    const kind = (p: string) => roots.find((r) => r.node === fileId(p))?.kind;
+    expect(kind("setupTests.ts")).toBe("test");
+    expect(kind("test/global.ts")).toBe("test");
+    expect(kind("public/service-worker.js")).toBe("tooling");
+    expect(kind("tools/lint-plugin.ts")).toBe("tooling");
+    expect(kind("src/unused.ts")).toBeUndefined();
+  });
+
+  it("finds Docusaurus convention files", () => {
+    const nodes = rootsOf({
+      "package.json": { name: "docs", dependencies: { "@docusaurus/core": "3" } },
+      "docusaurus.config.js": `module.exports = { themeConfig: {}, presets: [["classic", { docs: { sidebarPath: "./sidebars.js" } }]] };`,
+      "sidebars.js": "module.exports = {};",
+      "src/pages/index.tsx": "export default function Home() {}",
+      "src/theme/Root.js": "export default function Root() {}",
+      "src/components/Unused.js": "",
+    });
+    expect(nodes).toEqual(expect.arrayContaining([fileId("sidebars.js"), fileId("src/pages/index.tsx"), fileId("src/theme/Root.js")]));
+    expect(nodes).not.toContain(fileId("src/components/Unused.js"));
+  });
+});

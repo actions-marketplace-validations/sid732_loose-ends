@@ -32,6 +32,8 @@ export {
   FRAMEWORK_PROVIDERS,
   NEXT_ROUTE_EXPORTS,
   detectFrameworks,
+  addConfigReferences,
+  docusaurusRoots,
   nextRoots,
   serverlessRoots,
   storybookRoots,

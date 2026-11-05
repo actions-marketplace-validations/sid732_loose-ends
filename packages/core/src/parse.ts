@@ -70,6 +70,11 @@ export interface Declaration {
   shape: number[];
   /** Number of tokens in the declaration. */
   tokens: number;
+  /**
+   * The initializer calls something at load time (`export const a = register({...})`),
+   * so the declaration has side effects whenever its module loads.
+   */
+  sideEffects?: boolean;
 }
 
 export interface LocalExport {
@@ -219,6 +224,9 @@ export function parseModule(path: string, text: string): ModuleInfo {
       addDeclaration(statement, [statement.name.text], "type", exported, false, statement);
     } else if (ts.isEnumDeclaration(statement)) {
       addDeclaration(statement, [statement.name.text], "enum", exported, false, statement);
+    } else if (ts.isModuleDeclaration(statement) && ts.isIdentifier(statement.name) && statement.name.text === "global") {
+      // `declare global { ... }` augments the global scope; it applies whenever the file is part of the program.
+      collectReferences(statement, bodyRefs);
     } else if (ts.isModuleDeclaration(statement) && ts.isIdentifier(statement.name)) {
       addDeclaration(statement, [statement.name.text], "namespace", exported, false, statement);
     } else if (ts.isVariableStatement(statement)) {
@@ -241,7 +249,11 @@ export function parseModule(path: string, text: string): ModuleInfo {
         const scope = decl.initializer ?? decl.type;
         const before = info.declarations.length;
         addDeclaration(statement, names, "variable", exported, false, scope ? decl : undefined);
-        for (const d of info.declarations.slice(before)) d.statementSize = countDeclarators(statement);
+        const sideEffects = !!decl.initializer && callsAtLoad(decl.initializer);
+        for (const d of info.declarations.slice(before)) {
+          d.statementSize = countDeclarators(statement);
+          if (sideEffects) d.sideEffects = true;
+        }
       }
     } else {
       collectReferences(statement, bodyRefs);
@@ -530,4 +542,22 @@ function fnv(text: string): number {
 function containsJsx(node: ts.Node): boolean {
   if (ts.isJsxElement(node) || ts.isJsxSelfClosingElement(node) || ts.isJsxFragment(node)) return true;
   return ts.forEachChild(node, containsJsx) ?? false;
+}
+
+/** Whether an initializer's outermost expression is a call (`register({...})`, `new Map()`, tagged templates). */
+function callsAtLoad(expr: ts.Expression): boolean {
+  let node: ts.Expression = expr;
+  for (;;) {
+    if (ts.isParenthesizedExpression(node) || ts.isAsExpression(node) || ts.isSatisfiesExpression(node) || ts.isNonNullExpression(node) || ts.isAwaitExpression(node)) {
+      node = node.expression;
+      continue;
+    }
+    break;
+  }
+  if (ts.isCallExpression(node)) {
+    // Pure wrappers that only build values do not need to run for their side effects.
+    const callee = node.expression.getText();
+    return !/^(Object\.freeze|Symbol|String|Number|Boolean|BigInt|Array\.from|Object\.fromEntries|Object\.assign|z\.|v\.|t\.|Type\.)/.test(callee) && !/^(memo|forwardRef|React\.memo|React\.forwardRef|lazy|React\.lazy|createContext|React\.createContext|styled)\b/.test(callee);
+  }
+  return ts.isNewExpression(node);
 }

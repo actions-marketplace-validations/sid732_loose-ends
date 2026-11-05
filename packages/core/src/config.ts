@@ -25,6 +25,8 @@ export const DEFAULT_EXCLUDE = [
   "**/.pnpm-store/**",
   "**/storybook-static/**",
   "**/*.d.ts",
+  "**/*.d.mts",
+  "**/*.d.cts",
   "**/*.min.js",
 ];
 

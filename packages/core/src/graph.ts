@@ -145,6 +145,7 @@ export function buildGraph(config: LooseEndsConfig, options: { read?: (abs: stri
         line: decl.line,
       });
       graph.addEdge({ from: symbolId(file.path, decl.name), to: fileId(file.path), kind: "contains", line: decl.line });
+      if (decl.sideEffects) graph.addEdge({ from: fileId(file.path), to: symbolId(file.path, decl.name), kind: "reference", line: decl.line });
     }
   }
 

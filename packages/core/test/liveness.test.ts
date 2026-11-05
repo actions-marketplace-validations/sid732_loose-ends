@@ -59,3 +59,23 @@ describe("analyze", () => {
     expect(liveness(a, symbolId("plugins/extra.ts", "x"))).toBe("uncertain");
   });
 });
+
+describe("load-time side effects", () => {
+  it("keeps registrations that run on import and global augmentations live", () => {
+    const a = run({
+      "package.json": { name: "app", main: "index.ts" },
+      "index.ts": `import "./actions";`,
+      "actions.ts": `import { register } from "./register";
+export const actionWrap = register({ name: "wrap" });
+export const formatter = (s: string) => s.trim();
+export const Button = memo(() => null);
+declare global { interface Window { app: unknown } }`,
+      "register.ts": `export const register = <T>(a: T) => a;`,
+    });
+    expect(liveness(a, symbolId("actions.ts", "actionWrap"))).toBe("live");
+    expect(liveness(a, symbolId("register.ts", "register"))).toBe("live");
+    expect(liveness(a, symbolId("actions.ts", "formatter"))).toBe("orphaned");
+    expect(liveness(a, symbolId("actions.ts", "Button"))).toBe("orphaned");
+    expect(a.graph.nodes.has(symbolId("actions.ts", "global"))).toBe(false);
+  });
+});
