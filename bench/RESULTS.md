@@ -18,7 +18,7 @@ Run on 2026-11-05 on an Apple M4 laptop with Node.js 25.9, against shallow clone
 | Ghost | 10.0 s | 29.7 s | 21.1 s (251 files changed) | 794 MB |
 | cal.com | 4.8 s | 16.9 s | 18.8 s (131 files changed) | 689 MB |
 
-`check` analyzes the project twice, base and head, and extracts the base with `git archive`, so it costs roughly two scans plus the extraction. The time depends on repository size, not on how many files the change touches. A GitHub-hosted runner (4 vCPU, 16 GB) has enough headroom for all four.
+`check` analyzes the project twice, base and head, and writes the base to a temp directory, so it costs roughly two scans plus the extraction. The time depends on repository size, not on how many files the change touches. A GitHub-hosted runner (4 vCPU, 16 GB) has enough headroom for all four.
 
 ## False alarms on real history
 
@@ -73,6 +73,15 @@ The check failed as it should.
 | `export const x = register({...})` counted as unused | excalidraw | Load-time calls keep a declaration live |
 | `declare global {}` and `.d.mts` reported | Ghost | Ignored |
 | Packages used only in config (`"extends": "@acme/tsconfig"`) | cal.com | Counted as used |
+
+## A Python-heavy repo with a browser extension
+
+A private repo with 315 Python files, 7 JavaScript files (a Chrome extension and two tests), and about 850 MB of generated JSON, PDF, and LaTeX output.
+
+- `scan` first reported all 4 extension scripts as orphaned, because they are loaded by `manifest.json` and `<script>` tags in HTML pages. A web extension provider now reads both. The one remaining orphan is a minified bundle saved as research data, which nothing loads.
+- `check` took 43–62 s, almost all of it extracting the base revision: `git archive` wrote every tracked file, including thousands of PDFs. The snapshot now skips binaries, documents, and files far from JS/TS code. On this repo the snapshot dropped from 6.7 s to 1.0 s and cleanup from 5 s to 25 ms. On shadcn/ui, `check` HEAD~30 went from 17.8 s to 16.1 s and peak memory from 605 MB to 452 MB, with identical findings on all four public repos. The old snapshot also held the whole archive in memory with a 1 GB cap, so repos above that size would have failed.
+
+Python files are not analyzed. Loose Ends covers TypeScript and JavaScript only.
 
 ## Reproduce
 

@@ -27,7 +27,7 @@ action.yml     Composite GitHub Action
    - `dependency`: code uses a package.
 5. **Roots** (`roots.ts`, `frameworks.ts`, `directives.ts`): providers add production, tooling, and test roots from manifests, scripts, config, framework conventions, and directives.
 6. **Classify** (`liveness.ts`): a breadth-first walk from production and tooling roots marks nodes `live`, and a second walk from test roots marks `test-only`. Pattern targets, and siblings of computed imports, become `uncertain`. Everything else is `orphaned` unless a dormant rule covers it. Each reached node remembers the edge it was reached through, so a path can be rebuilt.
-7. **Compare** (`findings.ts`, `check.ts`): the base revision (merge base, extracted with `git archive`) and the head (a ref or the working tree) are analyzed with the same config. Renames are mapped, and findings describe only the transitions this change caused.
+7. **Compare** (`findings.ts`, `check.ts`): the base revision (merge base, written to a temp directory with `git cat-file`, skipping binaries, documents, and data files far from code) and the head (a ref or the working tree) are analyzed with the same config. Renames are mapped, and findings describe only the transitions this change caused.
 8. **Refine**: dependency usage (`dependencies.ts`), replacement and duplicate detection (`superseded.ts`), suppressions, and coverage evidence (`coverage.ts`).
 9. **Report** (`report/`): text, JSON, markdown, and SARIF.
 10. **Clean up** (`cleanup.ts`): turn findings into deletions, apply them in a scratch copy, run the configured checks, and return a patch.

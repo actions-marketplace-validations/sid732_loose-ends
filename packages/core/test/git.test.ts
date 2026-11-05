@@ -35,6 +35,26 @@ describe("git helpers", () => {
     expect(existsSync(snap.root)).toBe(false);
   });
 
+  it("leaves binaries, documents, and data far from code out of snapshots", () => {
+    const root = repo({
+      "web/src/a.ts": "export {};",
+      "web/src/data.json": "{}",
+      "web/package.json": { name: "web" },
+      "tsconfig.base.json": "{}",
+      "output/run-1/result.json": "{}",
+      "output/run-1/report.pdf": "%PDF",
+      "web/src/logo.png": "png",
+      "web/src/paper.pdf": "%PDF",
+    });
+    const snap = snapshot(root, "main");
+    try {
+      for (const kept of ["web/src/a.ts", "web/src/data.json", "web/package.json", "tsconfig.base.json", "web/src/logo.png"]) expect(existsSync(join(snap.root, kept)), kept).toBe(true);
+      for (const skipped of ["output/run-1/result.json", "output/run-1/report.pdf", "web/src/paper.pdf"]) expect(existsSync(join(snap.root, skipped)), skipped).toBe(false);
+    } finally {
+      snap.dispose();
+    }
+  });
+
   it("detects repos and default branches", () => {
     expect(isGitRepo(project({ "a.ts": "" }))).toBe(false);
     const root = repo({ "a.ts": "" });
