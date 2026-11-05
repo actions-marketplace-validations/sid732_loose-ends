@@ -59,7 +59,7 @@ function setOutput(env: ActionEnv, name: string, value: string) {
 }
 
 interface PullRequestPayload {
-  pull_request?: { number: number; base: { sha: string }; head: { sha: string; repo?: { full_name?: string } } };
+  pull_request?: { number: number; base: { sha: string; ref?: string }; head: { sha: string; ref?: string; repo?: { full_name?: string } } };
   repository?: { full_name?: string };
 }
 
@@ -133,6 +133,12 @@ export async function runAction(env: ActionEnv, io: ActionIO): Promise<ActionOut
     return { exitCode: 2 };
   }
 
+  if (pr) {
+    // On pull_request events the checkout is GitHub's temporary merge commit. Label the comparison
+    // with the branch names and the PR head commit, which is what reviewers recognize.
+    if (result.base && pr.base.ref && !input(env, "base")) result.base = { ...result.base, ref: pr.base.ref };
+    result.head = { ref: pr.head.ref ? `#${pr.number} (${pr.head.ref})` : `#${pr.number}`, commit: pr.head.sha };
+  }
   io.log(formatText(result).trimEnd());
   const server = env.GITHUB_SERVER_URL ?? "https://github.com";
   const repo = env.GITHUB_REPOSITORY;

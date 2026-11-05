@@ -73,7 +73,7 @@ export function formatMarkdown(result: CheckResult, options: MarkdownOptions = {
   }
 
   out.push(
-    `<sub>${n.error} errors · ${n.warning} warnings · ${n.info} info${result.passed ? "" : ` · blocking: ${[...new Set(result.failing.map((f) => f.kind))].join(", ")}`}. ` +
+    `<sub>${plural(n.error, "error")} · ${plural(n.warning, "warning")} · ${n.info} info${result.passed ? "" : ` · blocking: ${[...new Set(result.failing.map((f) => f.kind))].join(", ")}`}. ` +
       "Every change should lead somewhere.</sub>",
   );
   return out.join("\n") + "\n";

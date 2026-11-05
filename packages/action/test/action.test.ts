@@ -28,7 +28,7 @@ function actionEnv(root: string, inputs: Record<string, string> = {}, extra: Act
   writeFileSync(
     eventPath,
     JSON.stringify({
-      pull_request: { number: 12, base: { sha: baseSha }, head: { sha: "abc123", repo: { full_name: "acme/web" } } },
+      pull_request: { number: 12, base: { sha: baseSha, ref: "main" }, head: { sha: "abc123", ref: "feature", repo: { full_name: "acme/web" } } },
       repository: { full_name: "acme/web" },
     }),
   );
@@ -71,6 +71,8 @@ describe("runAction", () => {
     expect(lines).toContain("::error file=src/b.ts,line=1,title=Loose Ends%3A orphaned-addition (blocking)::File added in this change is not reachable from any entry point.");
     expect(readFileSync(env.GITHUB_STEP_SUMMARY!, "utf8")).toContain("## ❌ Loose Ends: 1 new loose end");
     expect(readFileSync(env.GITHUB_STEP_SUMMARY!, "utf8")).toContain("https://github.com/acme/web/blob/abc123/src/b.ts#L1");
+    expect(readFileSync(env.GITHUB_STEP_SUMMARY!, "utf8")).toMatch(/<sub>main \([0-9a-f]{7}\) → #12 \(feature\) \(abc123\) · 1 file changed<\/sub>/);
+    expect(readFileSync(env.GITHUB_STEP_SUMMARY!, "utf8")).toContain("1 error · 0 warnings · 0 info");
     expect(readFileSync(env.GITHUB_OUTPUT!, "utf8")).toBe("passed=false\nfindings=1\nblocking=1\nsarif=le.sarif\n");
     expect(JSON.parse(readFileSync(join(root, "le.sarif"), "utf8")).version).toBe("2.1.0");
     expect(calls.map((c) => `${c.method} ${c.url}`)).toEqual([
