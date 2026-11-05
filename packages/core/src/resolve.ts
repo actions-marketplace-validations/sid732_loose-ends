@@ -63,7 +63,8 @@ export class Resolver {
   }
 
   private resolveUncached(from: string, specifier: string): Resolution {
-    const clean = specifier.replace(/[?#].*$/, "");
+    // Strip ?query and #hash suffixes (e.g. "./icon.svg?react"), but keep leading "#" subpath imports.
+    const clean = specifier.replace(/(?!^)[?#].*$/, "");
     if (clean.startsWith("node:") || BUILTINS.has(clean) || BUILTINS.has(clean.split("/")[0]!)) {
       return { kind: "external", package: clean.replace(/^node:/, "").split("/")[0]!, builtin: true };
     }
@@ -72,7 +73,7 @@ export class Resolver {
       return this.resolvePath(posix.normalize(base), specifier);
     }
 
-    const aliased = this.resolveAlias(from, clean);
+    const aliased = this.resolveAlias(from, clean) ?? this.resolveConventionalAlias(from, clean);
     if (aliased) return aliased;
 
     const { name, subpath } = splitPackage(clean);
@@ -152,10 +153,43 @@ export class Resolver {
       for (const target of targets) {
         const rel = posix.normalize(posix.join(cfg.base, target.replace("*", matched)));
         const file = this.fileOrSource(rel);
-        if (file) return { kind: "file", path: file };
+        if (file) return { kind: "file", path: file, package: aliasPackage(specifier) };
       }
     }
     return undefined;
+  }
+
+  /**
+   * Conventions that need no tsconfig: `@/x` and `~/x` (Vite and Nuxt style
+   * aliases) map to the package's src/, and `#x` uses package.json `imports`.
+   */
+  private resolveConventionalAlias(from: string, specifier: string): Resolution | undefined {
+    const pkg = this.packageOf(from);
+    const dir = pkg?.dir ?? "";
+    if (specifier.startsWith("#") && pkg?.manifest.imports) {
+      for (const target of resolveExports(pkg.manifest.imports, specifier, true)) {
+        const file = this.resolveEntry(dir, target);
+        if (file) return { kind: "file", path: file };
+      }
+      return undefined;
+    }
+    const match = /^[@~]\/(.*)$/.exec(specifier);
+    if (!match) return undefined;
+    for (const base of ["src", ""]) {
+      const file = this.fileOrSource(posix.normalize(posix.join(dir, base, match[1]!)));
+      if (file) return { kind: "file", path: file };
+    }
+    return undefined;
+  }
+
+  /** Innermost workspace package containing a file. */
+  private packageOf(file: string): WorkspacePackage | undefined {
+    let best: WorkspacePackage | undefined;
+    for (const pkg of this.packages) {
+      if (pkg.dir !== "" && !file.startsWith(pkg.dir + "/")) continue;
+      if (!best || pkg.dir.length > best.dir.length) best = pkg;
+    }
+    return best;
   }
 
   /** Find the nearest tsconfig/jsconfig at or above a directory and read its path aliases. */
@@ -182,19 +216,40 @@ function parentDir(dir: string): string {
   return parent === "." ? "" : parent;
 }
 
-function readPaths(root: string, abs: string): PathsConfig | undefined {
+function readPaths(root: string, abs: string, seen = new Set<string>()): PathsConfig | undefined {
+  if (seen.has(abs)) return undefined;
+  seen.add(abs);
   const read = ts.readConfigFile(abs, ts.sys.readFile);
   if (read.error) return undefined;
   const parsed = ts.parseJsonConfigFileContent(read.config, ts.sys, dirname(abs), undefined, abs);
   const options = parsed.options;
   const paths = options.paths;
-  if (!paths && !options.baseUrl) return undefined;
+  if (!paths && !options.baseUrl) {
+    // Solution-style configs ({ files: [], references: [...] }) keep aliases in the referenced projects.
+    let out: PathsConfig | undefined;
+    for (const ref of parsed.projectReferences ?? []) {
+      const target = ref.path.endsWith(".json") ? ref.path : join(ref.path, "tsconfig.json");
+      if (!existsSync(target)) continue;
+      const sub = readPaths(root, target, seen);
+      if (!sub) continue;
+      if (!out) out = { base: sub.base, paths: { ...sub.paths } };
+      else for (const [k, v] of Object.entries(sub.paths)) if (!(k in out.paths)) out.paths[k] = v;
+    }
+    return out;
+  }
   const baseAbs = (options.pathsBasePath as string | undefined) ?? options.baseUrl ?? dirname(abs);
   const base = toRelative(root, normalize(options.baseUrl ?? baseAbs));
   const out: Record<string, string[]> = { ...(paths ?? {}) };
   // baseUrl alone makes bare specifiers resolve relative to it.
   if (options.baseUrl && !("*" in out)) out["*"] = ["*"];
   return { base, paths: out };
+}
+
+/** Package name an aliased specifier stands for, e.g. `@acme/ui/button` -> `@acme/ui`. Not for `@/x` or `~/x`. */
+function aliasPackage(specifier: string): string | undefined {
+  if (/^[@~#]\//.test(specifier) || specifier.startsWith("#") || specifier.startsWith("~")) return undefined;
+  if (specifier.startsWith("@") && !specifier.includes("/")) return undefined;
+  return splitPackage(specifier).name;
 }
 
 export function splitPackage(specifier: string): { name: string; subpath: string } {

@@ -17,6 +17,8 @@ export interface PackageJson {
   peerDependencies?: Record<string, string>;
   optionalDependencies?: Record<string, string>;
   workspaces?: string[] | { packages?: string[] };
+  /** Node.js subpath imports (`#internal/*`). */
+  imports?: Record<string, unknown>;
   [key: string]: unknown;
 }
 
@@ -87,7 +89,7 @@ const CONDITION_ORDER = ["source", "development", "import", "module", "node", "r
  * Resolve the target of a package.json `exports` field for a subpath like
  * "." or "./utils". Supports string, condition objects, and `*` patterns.
  */
-export function resolveExports(exportsField: unknown, subpath: string): string[] {
+export function resolveExports(exportsField: unknown, subpath: string, importsField = false): string[] {
   if (exportsField === undefined || exportsField === null) return [];
   if (typeof exportsField === "string" || Array.isArray(exportsField)) {
     return subpath === "." ? flattenTarget(exportsField) : [];
@@ -95,7 +97,7 @@ export function resolveExports(exportsField: unknown, subpath: string): string[]
   if (typeof exportsField !== "object") return [];
   const map = exportsField as Record<string, unknown>;
   const keys = Object.keys(map);
-  const isSubpathMap = keys.some((k) => k.startsWith("."));
+  const isSubpathMap = importsField || keys.some((k) => k.startsWith("."));
   if (!isSubpathMap) return subpath === "." ? flattenTarget(map) : [];
   if (subpath in map) return flattenTarget(map[subpath]);
   for (const key of keys) {

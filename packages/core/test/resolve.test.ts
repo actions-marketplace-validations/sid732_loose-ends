@@ -78,3 +78,49 @@ describe("helpers", () => {
     expect(resolveExports("./index.js", ".")).toEqual(["./index.js"]);
   });
 });
+
+describe("Resolver conventions found in real repos", () => {
+  it("follows tsconfig project references for path aliases", () => {
+    const r = resolver({
+      "package.json": { name: "app" },
+      "tsconfig.json": { files: [], references: [{ path: "./tsconfig.app.json" }, { path: "./tsconfig.node.json" }] },
+      "tsconfig.app.json": { compilerOptions: { baseUrl: ".", paths: { "@/*": ["./src/*"] } }, include: ["src"] },
+      "tsconfig.node.json": { compilerOptions: {}, include: ["vite.config.ts"] },
+      "src/main.ts": "",
+      "src/lib/kpi.tsx": "",
+    });
+    expect(r.resolve("src/main.ts", "@/lib/kpi")).toEqual({ kind: "file", path: "src/lib/kpi.tsx" });
+  });
+
+  it("maps @/ and ~/ to the package src without a tsconfig", () => {
+    const r = resolver({
+      "package.json": { name: "root", workspaces: ["apps/*"] },
+      "apps/web/package.json": { name: "web" },
+      "apps/web/src/main.ts": "",
+      "apps/web/src/util/date.ts": "",
+    });
+    expect(r.resolve("apps/web/src/main.ts", "@/util/date")).toEqual({ kind: "file", path: "apps/web/src/util/date.ts" });
+    expect(r.resolve("apps/web/src/main.ts", "~/util/date")).toEqual({ kind: "file", path: "apps/web/src/util/date.ts" });
+  });
+
+  it("resolves package.json subpath imports", () => {
+    const r = resolver({
+      "package.json": { name: "app", imports: { "#db": "./src/db/index.ts", "#lib/*": "./src/lib/*.ts" } },
+      "src/main.ts": "",
+      "src/db/index.ts": "",
+      "src/lib/log.ts": "",
+    });
+    expect(r.resolve("src/main.ts", "#db")).toEqual({ kind: "file", path: "src/db/index.ts" });
+    expect(r.resolve("src/main.ts", "#lib/log")).toEqual({ kind: "file", path: "src/lib/log.ts" });
+  });
+
+  it("tags scoped path aliases with their package name", () => {
+    const r = resolver({
+      "package.json": { name: "root" },
+      "tsconfig.json": { compilerOptions: { paths: { "@excalidraw/common": ["./packages/common/src/index.ts"] } } },
+      "packages/common/src/index.ts": "",
+      "app.ts": "",
+    });
+    expect(r.resolve("app.ts", "@excalidraw/common")).toEqual({ kind: "file", path: "packages/common/src/index.ts", package: "@excalidraw/common" });
+  });
+});
