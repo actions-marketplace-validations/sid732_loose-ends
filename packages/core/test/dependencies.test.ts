@@ -38,6 +38,17 @@ describe("dependencyReport", () => {
     expect(report).toEqual(["package.json zod unused", "packages/a/package.json ms unused", "packages/a/package.json zod live"]);
   });
 
+  it("counts packages named in config files as used", () => {
+    const root = project({
+      "package.json": { name: "app", main: "index.ts", dependencies: { "@acme/tsconfig": "1", "tailwindcss-animate": "1", leftpad: "1" } },
+      "tsconfig.json": { extends: "@acme/tsconfig/base.json" },
+      "tailwind.config.js": "module.exports = { plugins: [require('tailwindcss-animate')] };",
+      "index.ts": "",
+    });
+    const uses = Object.fromEntries(dependencyReport(analyze(loadConfig(root))).map((r) => [r.name, r.use]));
+    expect(uses).toEqual({ "@acme/tsconfig": "config", leftpad: "unused", "tailwindcss-animate": "live" });
+  });
+
   it("counts JSX as use of the JSX runtime", () => {
     const root = project({
       "package.json": { name: "ui", main: "index.tsx", dependencies: { react: "19", preact: "10" } },

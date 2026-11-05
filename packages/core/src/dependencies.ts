@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { dependencyId, fileId } from "./graph.js";
 import { makeFinding, type Finding } from "./findings.js";
@@ -36,7 +36,7 @@ const IMPLICIT = [
 /** Packages the compiler imports on behalf of JSX (`jsxImportSource`). */
 const JSX_RUNTIMES = ["react", "preact", "solid-js", "@emotion/react", "hono"];
 
-export type DependencyUse = "live" | "test-only" | "script" | "unused" | "ignored";
+export type DependencyUse = "live" | "test-only" | "script" | "config" | "unused" | "ignored";
 
 export interface DependencyReport {
   package: string;
@@ -56,6 +56,7 @@ export function dependencyReport(analysis: Analysis): DependencyReport[] {
     const manifest = pkg.dir ? `${pkg.dir}/package.json` : "package.json";
     const text = readManifest(analysis.config.root, manifest);
     const scripts = Object.values(pkg.manifest.scripts ?? {}).join("\n");
+    const configs = configText(analysis.config.root, pkg.dir);
     const nested = packages.filter((p) => p !== pkg && p.dir.startsWith(pkg.dir ? pkg.dir + "/" : "")).map((p) => p.dir);
     for (const name of Object.keys(deps).sort()) {
       let use: DependencyUse;
@@ -63,6 +64,7 @@ export function dependencyReport(analysis: Analysis): DependencyReport[] {
       else {
         use = usage(analysis, pkg, nested, name);
         if (use === "unused" && usedByScript(scripts, name)) use = "script";
+        else if (use === "unused" && namedInConfig(configs, name)) use = "config";
       }
       out.push({ package: pkg.name, manifest, name, use, line: lineOf(text, name) });
     }
@@ -108,6 +110,29 @@ function usedByScript(scripts: string, name: string): boolean {
   return [...candidates].some((c) => new RegExp(`(^|[\\s/;&|(])${escape(c)}($|[\\s;&|)])`, "m").test(scripts));
 }
 
+const CONFIG_FILE = /^(tsconfig[\w.-]*\.json|jsconfig\.json|\.[\w.-]+rc(\.(json|js|cjs|mjs|ya?ml))?|[\w.-]+\.config\.(js|cjs|mjs|ts|mts|cts|json)|[\w.-]+\.json)$/;
+const SKIP_CONFIG = new Set(["package.json", "package-lock.json"]);
+
+/** Text of config files at a package root: tsconfig extends, eslint/prettier/babel configs, and so on. */
+function configText(root: string, dir: string): string {
+  const abs = join(root, dir);
+  let names: string[] = [];
+  try {
+    names = readdirSync(abs);
+  } catch {
+    return "";
+  }
+  return names
+    .filter((n) => CONFIG_FILE.test(n) && !SKIP_CONFIG.has(n))
+    .map((n) => readManifest(abs, n).slice(0, 256 * 1024))
+    .join("\n");
+}
+
+/** A package named in a config (`"extends": "@acme/tsconfig/base.json"`, `plugins: ["tailwindcss-animate"]`). */
+function namedInConfig(text: string, name: string): boolean {
+  return new RegExp(`["'\`]${escape(name)}(/[^"'\`]*)?["'\`]`).test(text);
+}
+
 function escape(text: string): string {
   return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
@@ -127,7 +152,7 @@ function lineOf(text: string, name: string): number | undefined {
 
 function finding(report: DependencyReport, message: string, before?: DependencyUse): Finding {
   const f = makeFinding("unused-dependency", undefined, `dep:${report.name}`, message, {
-    before: before === undefined ? undefined : before === "live" || before === "script" ? "live" : before === "test-only" ? "test-only" : "orphaned",
+    before: before === undefined ? undefined : isUsed(before) ? "live" : before === "test-only" ? "test-only" : "orphaned",
     after: report.use === "test-only" ? "test-only" : "orphaned",
     note:
       report.use === "test-only"
@@ -138,6 +163,7 @@ function finding(report: DependencyReport, message: string, before?: DependencyU
 }
 
 const isProblem = (use: DependencyUse) => use === "unused" || use === "test-only";
+const isUsed = (use: DependencyUse) => use === "live" || use === "script" || use === "config";
 
 /** Dependencies this change added without using, or stopped using without removing. */
 export function dependencyFindings(base: Analysis, head: Analysis): Finding[] {
