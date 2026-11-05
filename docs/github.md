@@ -2,9 +2,9 @@
 
 There are two ways to run Loose Ends on pull requests. Both produce the same findings.
 
-## GitHub Action
+## GitHub Action (recommended)
 
-Use the Action if you want the check to run inside your own CI.
+The Action runs on GitHub's own runners, so you need no server. It is free for public repositories, and private repositories use your regular Actions minutes (a run usually takes well under a minute).
 
 ```yaml
 # .github/workflows/loose-ends.yml
@@ -12,7 +12,7 @@ name: Loose Ends
 on: pull_request
 permissions:
   contents: read
-  security-events: write
+  pull-requests: write # for the sticky comment; drop it to skip commenting
 jobs:
   liveness:
     runs-on: ubuntu-latest
@@ -20,23 +20,37 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-      - id: loose-ends
-        uses: sid732/loose-ends@main
-      - if: always() && steps.loose-ends.outputs.sarif != ''
-        uses: github/codeql-action/upload-sarif@v3
-        with:
-          sarif_file: loose-ends.sarif
-          category: loose-ends
+      - uses: sid732/loose-ends@v1
 ```
 
-`fetch-depth: 0` is required, because the base commit has to exist locally. The markdown report goes to the job summary, and the job fails when blocking findings exist.
+`fetch-depth: 0` is required, because the base commit has to exist locally. Node.js setup is not needed: the Action ships as one bundled file and runs on the runner's built-in Node.
 
-## GitHub App
+On each pull request, the Action:
 
-Use the App if you want annotations and a sticky PR comment on every repository without editing each workflow.
+- adds inline annotations on the diff for each finding (errors in red, warnings in yellow),
+- writes the full report to the job summary,
+- posts one PR comment and updates it on later pushes (with `comment: on-findings`, it only appears once there is something to report),
+- fails the job when blocking findings exist. Make the job a required status check in branch protection to block merges.
+
+| Input | Default | Meaning |
+|---|---|---|
+| `working-directory` | `.` | Project root inside the repository. Use one step per project in a monorepo with several roots. |
+| `base` | PR base | Base revision to compare against. |
+| `fail-on` | project config | Comma-separated finding kinds that fail the job. |
+| `fail` | `true` | Set to `false` to report without failing. |
+| `annotations` | `true` | Inline annotations on the diff. |
+| `comment` | `on-findings` | `on-findings`, `always`, or `never`. |
+| `sarif` | empty | Path to write a SARIF file, for `github/codeql-action/upload-sarif` (free on public repositories, needs GitHub Advanced Security on private ones). |
+
+Outputs: `passed`, `findings`, `blocking`, `sarif`.
+
+Pull requests opened from forks get a read-only token, so the comment is skipped with a warning. Annotations and the pass/fail result still work.
+
+GitHub shows at most 10 error and 10 warning annotations per step on the diff. The job summary and the comment always list every finding.
+
+## GitHub App (self-hosted)
+
+The App needs a server you run. It is only worth it if you want one install to cover many repositories without adding a workflow file to each one. Everything the App reports, the Action reports too.
 
 1. Create the app from [`packages/github-app/app.yml`](../packages/github-app/app.yml). It needs `checks: write`, `issues: write` (for the comment), `contents: read`, and `metadata: read`, and it subscribes to `pull_request`.
 2. Download the private key and note the app ID and webhook secret.

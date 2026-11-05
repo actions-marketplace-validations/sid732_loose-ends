@@ -12,6 +12,9 @@
     },
     {
       "path": "packages/github-app"
+    },
+    {
+      "path": "packages/action"
     }
   ]
 }

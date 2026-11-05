@@ -6,6 +6,7 @@ COPY packages/core/package.json packages/core/
 COPY packages/cli/package.json packages/cli/
 COPY packages/mcp/package.json packages/mcp/
 COPY packages/github-app/package.json packages/github-app/
+COPY packages/action/package.json packages/action/
 RUN npm ci --ignore-scripts
 COPY packages packages
 RUN npx tsc -b packages/github-app && npm prune --omit=dev

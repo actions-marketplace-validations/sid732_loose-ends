@@ -89,8 +89,8 @@ Dormant markers and suppressions need a reason. Without one, they become finding
 
 ## In CI and on pull requests
 
-- **GitHub Action:** `uses: sid732/loose-ends@main` writes a markdown report to the job summary and a SARIF file for code scanning, and fails the job on blocking findings.
-- **GitHub App:** check runs with inline annotations and one sticky PR comment. Make the check required to block merges.
+- **GitHub Action (no server, free on public repos):** `uses: sid732/loose-ends@v1` adds inline annotations on the diff, keeps one PR comment up to date, writes the report to the job summary, and fails the job on blocking findings.
+- **GitHub App:** the same report as check runs, for people who prefer to host a server and install once across many repositories.
 
 Setup for both is in [docs/github.md](docs/github.md).
 

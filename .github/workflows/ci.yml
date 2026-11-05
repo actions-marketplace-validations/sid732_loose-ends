@@ -21,6 +21,9 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run build
+      - name: Check the action bundle is up to date
+        if: matrix.node == 22
+        run: node packages/action/build.mjs && git diff --exit-code -- action/
       - run: npm test
         env:
           GIT_AUTHOR_NAME: ci
@@ -34,19 +37,9 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      security-events: write
+      pull-requests: write
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-      - id: loose-ends
-        uses: ./
-      - if: always() && steps.loose-ends.outputs.sarif != ''
-        uses: github/codeql-action/upload-sarif@v3
-        with:
-          sarif_file: loose-ends.sarif
-          category: loose-ends
+      - uses: ./

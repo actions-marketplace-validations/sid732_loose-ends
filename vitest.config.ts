@@ -10,6 +10,7 @@ export default defineConfig({
       "loose-ends": pkg("cli"),
       "@loose-ends/mcp": pkg("mcp"),
       "@loose-ends/github-app": pkg("github-app"),
+      "@loose-ends/action": pkg("action"),
     },
   },
   test: {
