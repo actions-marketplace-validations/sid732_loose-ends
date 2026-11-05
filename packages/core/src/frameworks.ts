@@ -125,24 +125,101 @@ export const nextRoots: RootProvider = {
   },
 };
 
+/** Mark every local `<script src>` in an HTML file as a production root. Returns false if the file is missing. */
+function addHtmlScripts(ctx: RootContext, html: string, source: string, rootDir: string): boolean {
+  const abs = join(ctx.config.root, html);
+  if (!existsSync(abs)) return false;
+  const dir = posix.dirname(html) === "." ? "" : posix.dirname(html);
+  for (const match of readText(abs).matchAll(/<script\b[^>]*\bsrc=["']([^"']+)["']/g)) {
+    const src = match[1]!;
+    if (/^(https?:)?\/\/|^(data|chrome|moz)[\w-]*:/.test(src)) continue;
+    // A leading slash means the site or extension root.
+    const file = src.startsWith("/") ? ctx.build.resolver.resolveEntry(rootDir, src.slice(1)) : ctx.build.resolver.resolveEntry(dir, src.replace(/^\.\//, ""));
+    if (file) ctx.addFile(file, { kind: "production", source, reason: `script in ${html}` }, "all");
+  }
+  return true;
+}
+
 /** Vite loads `<script type="module" src>` from index.html files. */
 export const viteRoots: RootProvider = {
   name: "vite",
   discover(ctx) {
     eachPackage(ctx, "vite", (pkg) => {
-      for (const html of ["index.html", "src/index.html", "public/index.html"]) {
-        const abs = join(ctx.config.root, pkg.dir, html);
-        if (!existsSync(abs)) continue;
-        const text = readFileSync(abs, "utf8");
-        for (const match of text.matchAll(/<script\b[^>]*\bsrc=["']([^"']+)["']/g)) {
-          const src = match[1]!;
-          if (/^(https?:)?\/\//.test(src)) continue;
-          const rel = src.startsWith("/") ? src.slice(1) : posix.join(posix.dirname(html), src);
-          const file = ctx.build.resolver.resolveEntry(pkg.dir, rel);
-          if (file) ctx.addFile(file, { kind: "production", source: "framework:vite", reason: `script in ${join2(pkg.dir, html)}` }, "all");
+      for (const html of ["index.html", "src/index.html", "public/index.html"]) addHtmlScripts(ctx, join2(pkg.dir, html), "framework:vite", pkg.dir);
+    });
+  },
+};
+
+interface ExtensionManifest {
+  manifest_version?: number;
+  background?: { service_worker?: string; scripts?: string[]; page?: string };
+  content_scripts?: Array<{ js?: string[] }>;
+  action?: { default_popup?: string };
+  browser_action?: { default_popup?: string };
+  page_action?: { default_popup?: string };
+  options_page?: string;
+  options_ui?: { page?: string };
+  devtools_page?: string;
+  side_panel?: { default_path?: string };
+  sidebar_action?: { default_panel?: string };
+  chrome_url_overrides?: Record<string, string>;
+  sandbox?: { pages?: string[] };
+  user_scripts?: { api_script?: string };
+  web_accessible_resources?: Array<string | { resources?: string[] }>;
+}
+
+/**
+ * Browser extensions (Chrome, Firefox, Edge) are wired up by manifest.json:
+ * background workers, content scripts, and HTML pages whose `<script>` tags
+ * load the rest. No package.json is needed.
+ */
+export const webExtensionRoots: RootProvider = {
+  name: "web-extension",
+  discover(ctx) {
+    const dirs = new Set<string>(ctx.build.resolver.packages.map((p) => p.dir));
+    dirs.add("");
+    for (const file of ctx.files) {
+      for (let dir = posix.dirname(file); ; dir = posix.dirname(dir)) {
+        dirs.add(dir === "." ? "" : dir);
+        if (dir === "." || dir === "/" || dir === "") break;
+      }
+    }
+    for (const dir of dirs) {
+      const manifestPath = join2(dir, "manifest.json");
+      const text = readText(join(ctx.config.root, manifestPath));
+      if (!text.includes("manifest_version")) continue;
+      let m: ExtensionManifest;
+      try {
+        m = JSON.parse(text) as ExtensionManifest;
+      } catch {
+        continue;
+      }
+      if (typeof m.manifest_version !== "number") continue;
+      const source = "framework:web-extension";
+      const scripts: string[] = [];
+      const pages: string[] = [];
+      const str = (v: unknown): v is string => typeof v === "string" && v.length > 0;
+      if (str(m.background?.service_worker)) scripts.push(m.background!.service_worker!);
+      for (const s of m.background?.scripts ?? []) if (str(s)) scripts.push(s);
+      if (str(m.background?.page)) pages.push(m.background!.page!);
+      for (const cs of m.content_scripts ?? []) for (const s of cs.js ?? []) if (str(s)) scripts.push(s);
+      if (str(m.user_scripts?.api_script)) scripts.push(m.user_scripts!.api_script!);
+      for (const p of [m.action?.default_popup, m.browser_action?.default_popup, m.page_action?.default_popup, m.options_page, m.options_ui?.page, m.devtools_page, m.side_panel?.default_path, m.sidebar_action?.default_panel, ...Object.values(m.chrome_url_overrides ?? {}), ...(m.sandbox?.pages ?? [])]) {
+        if (str(p)) pages.push(p);
+      }
+      for (const w of m.web_accessible_resources ?? []) {
+        for (const r of typeof w === "string" ? [w] : (w.resources ?? [])) {
+          if (!str(r) || r.includes("*")) continue;
+          if (/\.html?$/.test(r)) pages.push(r);
+          else scripts.push(r);
         }
       }
-    });
+      for (const s of scripts) {
+        const file = ctx.build.resolver.resolveEntry(dir, s.replace(/^\.?\//, ""));
+        if (file) ctx.addFile(file, { kind: "production", source, reason: `named in ${manifestPath}` }, "all");
+      }
+      for (const p of pages) addHtmlScripts(ctx, join2(dir, p.replace(/^\.?\//, "").replace(/[?#].*$/, "")), source, dir);
+    }
   },
 };
 
@@ -265,7 +342,7 @@ export const docusaurusRoots: RootProvider = {
   },
 };
 
-export const FRAMEWORK_PROVIDERS: RootProvider[] = [nextRoots, viteRoots, storybookRoots, serverlessRoots, docusaurusRoots, toolConfigRoots];
+export const FRAMEWORK_PROVIDERS: RootProvider[] = [nextRoots, viteRoots, storybookRoots, serverlessRoots, docusaurusRoots, webExtensionRoots, toolConfigRoots];
 
 function eachPackage(ctx: RootContext, framework: FrameworkName, fn: (pkg: WorkspacePackage) => void) {
   const packages = ctx.build.resolver.packages;

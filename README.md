@@ -35,7 +35,7 @@ That is the [express-api example](examples/express-api) after an agent-style cha
 2. **Changes must not orphan existing code** by removing the edges that kept it alive.
 3. **Replaced implementations must be removed** or explicitly justified.
 
-Loose Ends builds a Liveness Graph from the TypeScript parser: imports, exports, re-exports, references between top-level declarations, dynamic imports, and package dependencies. It finds roots in package manifests, scripts, framework conventions (Next.js routes, Vite entries, serverless functions, tool configs), config, and tests. It analyzes the base and head revisions and reports only what the change did. Existing dead code never blocks a pull request.
+Loose Ends builds a Liveness Graph from the TypeScript parser: imports, exports, re-exports, references between top-level declarations, dynamic imports, and package dependencies. It finds roots in package manifests, scripts, framework conventions (Next.js routes, Vite entries, browser extension manifests, serverless functions, tool configs), config, and tests. It analyzes the base and head revisions and reports only what the change did. Existing dead code never blocks a pull request.
 
 It is **not** an LLM guessing whether code looks unused, a general code reviewer, a formatter, or a security scanner. It does not claim that unobserved code is safe to delete, and it never deletes anything without deterministic evidence and a passing verification run.
 

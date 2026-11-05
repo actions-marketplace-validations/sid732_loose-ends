@@ -71,6 +71,8 @@ A `dormant` or `ignore` directive without a reason is reported as `invalid-suppr
 - A conventional entry (`index`, `src/index`, `src/main`, `server`, `app`) for packages that declare none.
 - Next.js: App Router special files (`page`, `layout`, `route`, `loading`, `error`, `not-found`, metadata files, …), every file under `pages/`, `middleware`, `instrumentation`, and `next.config`. Only exports Next.js reads count as roots, so an extra helper exported from a page is still reported.
 - Vite: `<script src>` tags in `index.html`.
+- Browser extensions: scripts named in a `manifest.json` that has `manifest_version` (background, content scripts, web-accessible resources), and `<script src>` tags in the HTML pages it names (popup, options, side panel, devtools). No `package.json` is needed.
+- Docusaurus config, sidebars, pages, and swizzled theme components.
 - Storybook config, Vercel `api/` functions, Netlify functions, and tool config files (`*.config.*`, `.*rc.*`).
 - Test files.
 

@@ -112,4 +112,40 @@ describe("config references", () => {
     expect(nodes).toEqual(expect.arrayContaining([fileId("sidebars.js"), fileId("src/pages/index.tsx"), fileId("src/theme/Root.js")]));
     expect(nodes).not.toContain(fileId("src/components/Unused.js"));
   });
+
+  it("finds browser extension scripts from manifest.json and the HTML pages it names", () => {
+    const nodes = rootsOf({
+      "extension/manifest.json": {
+        manifest_version: 3,
+        background: { service_worker: "background.js" },
+        content_scripts: [{ matches: ["https://*/*"], js: ["content.js"] }],
+        action: { default_popup: "popup.html" },
+        options_ui: { page: "options/index.html" },
+        web_accessible_resources: [{ resources: ["inject.js", "images/*"], matches: ["<all_urls>"] }],
+      },
+      "extension/popup.html": '<script src="popup.js"></script><script src="https://cdn.example.com/x.js"></script>',
+      "extension/options/index.html": '<script type="module" src="/options/options.js"></script>',
+      "extension/background.js": "",
+      "extension/content.js": "",
+      "extension/popup.js": "",
+      "extension/options/options.js": "",
+      "extension/inject.js": "",
+      "extension/unused.js": "",
+    });
+    expect(nodes).toEqual(
+      expect.arrayContaining([
+        fileId("extension/background.js"),
+        fileId("extension/content.js"),
+        fileId("extension/popup.js"),
+        fileId("extension/options/options.js"),
+        fileId("extension/inject.js"),
+      ]),
+    );
+    expect(nodes).not.toContain(fileId("extension/unused.js"));
+  });
+
+  it("ignores manifest.json files that are not extension manifests", () => {
+    const nodes = rootsOf({ "public/manifest.json": { name: "PWA", start_url: "/", icons: [{ src: "icon.js" }] }, "public/icon.js": "" });
+    expect(nodes).not.toContain(fileId("public/icon.js"));
+  });
 });
