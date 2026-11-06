@@ -2,7 +2,7 @@ import type { CheckResult } from "../check.js";
 import type { Finding, PathStep } from "../findings.js";
 import type { Severity } from "../types.js";
 
-export const TOOL = { name: "loose-ends", version: "1.0.2", url: "https://github.com/sid732/loose-ends" };
+export const TOOL = { name: "loose-ends", version: "1.1.0", url: "https://github.com/sid732/loose-ends" };
 
 export function location(f: Finding): string {
   if (!f.file) return f.target;

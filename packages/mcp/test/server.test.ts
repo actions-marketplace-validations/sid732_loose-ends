@@ -6,7 +6,7 @@ import { repo } from "../../core/test/helpers/project.js";
 
 async function connect(root: string) {
   const server = createServer({ root });
-  const client = new Client({ name: "test", version: "1.0.2" });
+  const client = new Client({ name: "test", version: "1.1.0" });
   const [a, b] = InMemoryTransport.createLinkedPair();
   await Promise.all([server.connect(a), client.connect(b)]);
   return client;
