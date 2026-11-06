@@ -30,10 +30,13 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/sid732/loose-ends.git",
+    "url": "git+https://github.com/sid732/loose-ends.git",
     "directory": "packages/core"
   },
   "engines": {
     "node": ">=20"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

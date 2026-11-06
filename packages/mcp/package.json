@@ -5,7 +5,7 @@
   "license": "MIT",
   "type": "module",
   "bin": {
-    "loose-ends-mcp": "./dist/bin.js"
+    "loose-ends-mcp": "dist/bin.js"
   },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -29,10 +29,13 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/sid732/loose-ends.git",
+    "url": "git+https://github.com/sid732/loose-ends.git",
     "directory": "packages/mcp"
   },
   "engines": {
     "node": ">=20"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

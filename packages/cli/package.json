@@ -5,7 +5,7 @@
   "license": "MIT",
   "type": "module",
   "bin": {
-    "loose-ends": "./dist/bin.js"
+    "loose-ends": "dist/bin.js"
   },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -36,10 +36,13 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/sid732/loose-ends.git",
+    "url": "git+https://github.com/sid732/loose-ends.git",
     "directory": "packages/cli"
   },
   "engines": {
     "node": ">=20"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }
