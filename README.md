@@ -1,5 +1,9 @@
 # Loose Ends
 
+[![npm](https://img.shields.io/npm/v/loose-ends)](https://www.npmjs.com/package/loose-ends)
+[![CI](https://github.com/sid732/loose-ends/actions/workflows/ci.yml/badge.svg)](https://github.com/sid732/loose-ends/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+
 Graph-powered liveness checks for AI-written code.
 
 > Every change should lead somewhere.
@@ -39,6 +43,8 @@ Loose Ends builds a Liveness Graph of TypeScript, JavaScript, Python, and Java c
 
 It is **not** an LLM guessing whether code looks unused, a general code reviewer, a formatter, or a security scanner. It does not claim that unobserved code is safe to delete, and it never deletes anything without deterministic evidence and a passing verification run.
 
+[bench/RESULTS.md](bench/RESULTS.md) has the results on public repositories, including about 700 Python and Java commits replayed through `check`.
+
 ## Install
 
 ```bash
@@ -47,10 +53,14 @@ npm install --save-dev loose-ends
 
 Requires Node.js 20 or newer and git.
 
+Python and Java projects need no `package.json`. With Node installed, run `npx loose-ends check` from the repository root.
+
+The npm packages are published from GitHub Actions with [provenance](https://docs.npmjs.com/generating-provenance-statements), so each version links back to the commit it was built from.
+
 ## Usage
 
 ```bash
-npx loose-ends check                     # working tree vs. merge base with main
+npx loose-ends check                     # working tree vs. merge base with the default branch
 npx loose-ends check --base origin/main --head HEAD
 npx loose-ends check --format markdown   # also: json, sarif
 npx loose-ends scan                      # whole-project report of existing debt
@@ -76,7 +86,32 @@ npx loose-ends init                      # starter loose-ends.config.json
 | `unused-dependency` | warning | A dependency that no live code imports. |
 | `uncertain` | info | Reachability depends on a dynamic import the graph cannot resolve. |
 
+`scan` reports existing code instead of a change, so it uses `orphaned` (nothing reaches it) and `test-only` (only tests reach it), plus `unused-dependency` and `uncertain`. It exits 0 unless you pass `--fail`.
+
 See [docs/findings.md](docs/findings.md) for what each kind means and what to do about it.
+
+### Configuration
+
+Every option is optional. `npx loose-ends init` writes a starter `loose-ends.config.json`:
+
+```json
+{
+  "$schema": "https://raw.githubusercontent.com/sid732/loose-ends/main/schema/config.schema.json",
+  "entries": ["src/jobs/*.ts", "src/events/handlers.ts#onInvoicePaid"],
+  "extendExclude": ["src/generated/**"],
+  "languages": ["javascript", "python"],
+  "failOn": ["orphaned-addition", "newly-orphaned", "superseded", "invalid-suppression"],
+  "checks": ["npm run typecheck", "npm test"]
+}
+```
+
+- `entries` adds roots the graph cannot see, such as files a job runner loads by name.
+- `extendExclude` adds to the default excludes (`node_modules`, build output, virtualenvs, …).
+- `languages` limits analysis to some of `javascript`, `python`, and `java`.
+- `failOn` picks the finding kinds that fail `check`.
+- `checks` are the commands `fix --verify` runs.
+
+All options, dormant rules, and suppressions are in [docs/configuration.md](docs/configuration.md).
 
 ### Intentionally unused code
 
@@ -90,14 +125,33 @@ export function handleV1Webhook() {}
 def handle_v1_webhook(): ...
 ```
 
+Java uses `//` like TypeScript. A `loose-ends-file:` comment applies to the whole file instead of the declaration below it.
+
 Dormant markers and suppressions need a reason. Without one, they become findings themselves. See [docs/configuration.md](docs/configuration.md).
 
 ## In CI and on pull requests
 
-- **GitHub Action (no server, free on public repos):** `uses: sid732/loose-ends@v1` adds inline annotations on the diff, keeps one PR comment up to date, writes the report to the job summary, and fails the job on blocking findings.
+```yaml
+# .github/workflows/loose-ends.yml
+name: Loose Ends
+on: pull_request
+permissions:
+  contents: read
+  pull-requests: write # for the PR comment
+jobs:
+  liveness:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0 # the base commit must exist locally
+      - uses: sid732/loose-ends@v1
+```
+
+- **GitHub Action (no server, free on public repos):** adds inline annotations on the diff, keeps one PR comment up to date, writes the report to the job summary, and fails the job on blocking findings. It works for Python and Java repositories too, with no Node setup step.
 - **GitHub App:** the same report as check runs, for people who prefer to host a server and install once across many repositories.
 
-Setup for both is in [docs/github.md](docs/github.md).
+Inputs (`working-directory`, `fail-on`, `comment`, `sarif`, …) and App setup are in [docs/github.md](docs/github.md).
 
 ## For coding agents
 
@@ -132,13 +186,18 @@ Runtime hit counts from istanbul or lcov reports are attached to findings. Cover
 
 A repository can mix all of them. How it works is described in [docs/architecture.md](docs/architecture.md).
 
-## Development
+### Limits
 
-```bash
-npm install
-npm run build
-npm test
-```
+- Tracking stops at top-level declarations. An unused method inside a used class, or an unused property on a used object, is not reported.
+- Code reached only through dependency injection by name, string-based plugin registries, or reflection is invisible to the graph. Add it to `entries` or mark it with `loose-ends: entry`.
+- Java classes with framework annotations (`@Service`, `@Controller`, `@Entity`, …) count as entry points, so they are never reported as unused.
+- Kotlin and Groovy are only scanned for the Java names they use. Their own code is not analyzed.
+- Python `getattr` with a computed name and modules found through `sys.path` changes are not followed.
+- Other languages are not analyzed.
+
+## Contributing
+
+Setup, pull request rules, and the release process are in [CONTRIBUTING.md](CONTRIBUTING.md). To report a vulnerability, see [SECURITY.md](SECURITY.md).
 
 ## License
 
