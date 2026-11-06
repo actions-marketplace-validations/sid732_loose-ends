@@ -1,6 +1,6 @@
 {
   "name": "@loose-ends/github-app",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "private": true,
   "description": "GitHub App that reports Loose Ends findings on pull requests.",
   "license": "MIT",
@@ -18,7 +18,7 @@
     "start": "node dist/server.js"
   },
   "dependencies": {
-    "@loose-ends/core": "1.0.1",
+    "@loose-ends/core": "1.0.2",
     "@octokit/app": "^16.1.0"
   }
 }

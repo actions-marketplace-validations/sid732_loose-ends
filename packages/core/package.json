@@ -1,6 +1,6 @@
 {
   "name": "@loose-ends/core",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Liveness Graph engine for Loose Ends.",
   "license": "MIT",
   "type": "module",
