@@ -1,4 +1,4 @@
-name: Loose Ends
+name: Loose Ends Check
 description: Graph-powered liveness checks for AI-written code. Fails when a pull request leaves orphaned, superseded, or unconnected code.
 author: Siddharth Nashikkar
 branding:

@@ -1,6 +1,6 @@
 {
   "name": "@loose-ends/mcp",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "MCP server that lets coding agents check their changes for loose ends.",
   "license": "MIT",
   "type": "module",
@@ -23,7 +23,7 @@
     "build": "tsc -b"
   },
   "dependencies": {
-    "@loose-ends/core": "1.0.0",
+    "@loose-ends/core": "1.0.1",
     "@modelcontextprotocol/sdk": "^1.32.0",
     "zod": "^4.0.0"
   },
