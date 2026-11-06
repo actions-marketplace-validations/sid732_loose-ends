@@ -82,11 +82,11 @@ describe("config references", () => {
         "package.json": { name: "app", main: "src/index.ts" },
         "src/index.ts": "",
         "vitest.config.ts": `export default { test: { setupFiles: ["./setupTests.ts"], globalSetup: "test/global.ts" } };`,
-        "vite.config.mts": `export default { plugins: [pwa({ swSrc: "public/service-worker.js" })] };`,
+        "vite.config.mts": `export default { plugins: [pwa({ swSrc: "src/service-worker.js" })] };`,
         ".oxlintrc.json": { jsPlugins: ["./tools/lint-plugin.ts"] },
         "setupTests.ts": "",
         "test/global.ts": "",
-        "public/service-worker.js": "",
+        "src/service-worker.js": "",
         "tools/lint-plugin.ts": "",
         "src/unused.ts": "",
       }),
@@ -95,7 +95,7 @@ describe("config references", () => {
     const kind = (p: string) => roots.find((r) => r.node === fileId(p))?.kind;
     expect(kind("setupTests.ts")).toBe("test");
     expect(kind("test/global.ts")).toBe("test");
-    expect(kind("public/service-worker.js")).toBe("tooling");
+    expect(kind("src/service-worker.js")).toBe("tooling");
     expect(kind("tools/lint-plugin.ts")).toBe("tooling");
     expect(kind("src/unused.ts")).toBeUndefined();
   });
@@ -145,7 +145,7 @@ describe("config references", () => {
   });
 
   it("ignores manifest.json files that are not extension manifests", () => {
-    const nodes = rootsOf({ "public/manifest.json": { name: "PWA", start_url: "/", icons: [{ src: "icon.js" }] }, "public/icon.js": "" });
-    expect(nodes).not.toContain(fileId("public/icon.js"));
+    const nodes = rootsOf({ "static/manifest.json": { name: "PWA", start_url: "/", icons: [{ src: "icon.js" }] }, "static/icon.js": "" });
+    expect(nodes).not.toContain(fileId("static/icon.js"));
   });
 });

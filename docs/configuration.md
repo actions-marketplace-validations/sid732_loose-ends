@@ -66,13 +66,14 @@ A `dormant` or `ignore` directive without a reason is reported as `invalid-suppr
 
 ## Roots Loose Ends finds on its own
 
-- `main`, `module`, `browser`, `bin`, and `exports` in every workspace `package.json`. Library entry points make all of their exports public API.
+- `main`, `module`, `browser`, `bin`, and `exports` in every workspace `package.json`. Without a workspace config, `package.json` files up to three levels down (an `app/` and a `server/` side by side) count as packages too. Library entry points make all of their exports public API.
 - Files run by package scripts (`node x.js`, `tsx src/server.ts`, …). Scripts named like `test*` count as test roots, and `build`, `lint`, `db`, `seed`, and similar names count as tooling roots.
 - A conventional entry (`index`, `src/index`, `src/main`, `server`, `app`) for packages that declare none.
 - Next.js: App Router special files (`page`, `layout`, `route`, `loading`, `error`, `not-found`, metadata files, …), every file under `pages/`, `middleware`, `instrumentation`, and `next.config`. Only exports Next.js reads count as roots, so an extra helper exported from a page is still reported.
 - Vite: `<script src>` tags in `index.html`.
 - Browser extensions: scripts named in a `manifest.json` that has `manifest_version` (background, content scripts, web-accessible resources), and `<script src>` tags in the HTML pages it names (popup, options, side panel, devtools). No `package.json` is needed.
 - Docusaurus config, sidebars, pages, and swizzled theme components.
+- Scripts in each package's `public/` directory, which Vite, Next.js, and Create React App serve by URL.
 - Storybook config, Vercel `api/` functions, Netlify functions, and tool config files (`*.config.*`, `.*rc.*`).
 - Test files.
 

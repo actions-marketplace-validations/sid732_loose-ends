@@ -38,7 +38,14 @@ export function readPackageJson(path: string): PackageJson | undefined {
   }
 }
 
-/** Discover the root package and every workspace package (npm, yarn, pnpm). */
+/** Directories never treated as packages when looking for nested package.json files. */
+const NESTED_IGNORE = ["**/node_modules/**", "**/dist/**", "**/build/**", "**/out/**", "**/.next/**", "**/vendor/**", "**/fixtures/**", "**/__fixtures__/**", "**/.git/**"];
+
+/**
+ * Discover the root package and every workspace package (npm, yarn, pnpm).
+ * Repos without a workspace config (an `app/` and a `server/` side by side,
+ * each with its own package.json) get their nested packages too.
+ */
 export function discoverPackages(root: string): WorkspacePackage[] {
   const rootManifest = readPackageJson(join(root, "package.json"));
   const out: WorkspacePackage[] = [];
@@ -48,7 +55,16 @@ export function discoverPackages(root: string): WorkspacePackage[] {
   const ws = rootManifest?.workspaces;
   for (const p of Array.isArray(ws) ? ws : ws?.packages ?? []) patterns.add(p);
   for (const p of readPnpmWorkspace(root)) patterns.add(p);
-  if (patterns.size === 0) return out;
+  if (patterns.size === 0) {
+    const nested = fg.sync(["*/package.json", "*/*/package.json", "*/*/*/package.json"], { cwd: root, ignore: NESTED_IGNORE, onlyFiles: true });
+    for (const rel of nested.sort()) {
+      const manifest = readPackageJson(join(root, rel));
+      if (!manifest) continue;
+      const dir = toRelative(root, dirname(join(root, rel)));
+      out.push({ name: manifest.name ?? dir, dir, manifest });
+    }
+    return out;
+  }
 
   const include = [...patterns].filter((p) => !p.startsWith("!")).map((p) => `${p.replace(/\/$/, "")}/package.json`);
   const exclude = [...patterns].filter((p) => p.startsWith("!")).map((p) => `${p.slice(1).replace(/\/$/, "")}/package.json`);

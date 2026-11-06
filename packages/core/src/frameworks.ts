@@ -254,6 +254,20 @@ export const serverlessRoots: RootProvider = {
   },
 };
 
+/**
+ * Vite, Next.js, and Create React App serve `public/` as-is, so scripts there
+ * (service workers, analytics snippets) are loaded by URL, not by import.
+ */
+export const publicDirRoots: RootProvider = {
+  name: "public-dir",
+  discover(ctx) {
+    const dirs = ctx.build.resolver.packages.map((p) => p.dir);
+    if (dirs.length === 0) dirs.push("");
+    const match = createMatcher(dirs.map((dir) => join2(dir, "public/**/*.{js,mjs,cjs}")));
+    for (const file of ctx.files.filter(match)) ctx.addFile(file, { kind: "production", source: "public-dir", reason: "served from public/" }, "all");
+  },
+};
+
 /** Tool configuration files loaded by CLIs: vite.config.ts, eslint.config.js, .eslintrc.cjs, and so on. */
 export const toolConfigRoots: RootProvider = {
   name: "tool-config",
@@ -342,7 +356,7 @@ export const docusaurusRoots: RootProvider = {
   },
 };
 
-export const FRAMEWORK_PROVIDERS: RootProvider[] = [nextRoots, viteRoots, storybookRoots, serverlessRoots, docusaurusRoots, webExtensionRoots, toolConfigRoots];
+export const FRAMEWORK_PROVIDERS: RootProvider[] = [nextRoots, viteRoots, storybookRoots, serverlessRoots, docusaurusRoots, webExtensionRoots, publicDirRoots, toolConfigRoots];
 
 function eachPackage(ctx: RootContext, framework: FrameworkName, fn: (pkg: WorkspacePackage) => void) {
   const packages = ctx.build.resolver.packages;

@@ -56,6 +56,24 @@ describe("discoverRoots", () => {
   });
 });
 
+describe("packages without a workspace config", () => {
+  it("finds entries of nested packages that sit side by side", () => {
+    const nodes = rootsOf({
+      "package.json": { dependencies: { leftover: "1.0.0" } },
+      "app/package.json": { name: "app", scripts: { dev: "vite" }, devDependencies: { vite: "6.0.0" } },
+      "app/index.html": '<script type="module" src="/src/main.tsx"></script>',
+      "app/src/main.tsx": "export {};",
+      "app/public/sw.js": "self.addEventListener('fetch', () => {});",
+      "server/package.json": { name: "server", main: "server.js" },
+      "server/server.js": "export {};",
+      "server/node_modules/dep/package.json": { name: "dep", main: "index.js" },
+      "server/node_modules/dep/index.js": "",
+    }).map((r) => r.node);
+    expect(nodes).toEqual(expect.arrayContaining([fileId("app/src/main.tsx"), fileId("app/public/sw.js"), fileId("server/server.js")]));
+    expect(nodes).not.toContain(fileId("server/node_modules/dep/index.js"));
+  });
+});
+
 describe("scriptTargets", () => {
   it("pulls file arguments out of commands", () => {
     expect(scriptTargets("tsx watch src/server.ts")).toEqual(["src/server.ts"]);
