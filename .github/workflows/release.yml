@@ -1,0 +1,66 @@
+name: Release
+
+# Publishes the npm packages when a GitHub release is published.
+# Uses npm trusted publishing (OIDC): no npm token is stored in the repo.
+# The `npm` environment requires approval before the job runs.
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment: npm
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.release.tag_name }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+      # Trusted publishing needs npm 11.5.1 or later.
+      - run: npm install -g npm@^11.5.1
+      - run: npm ci
+      - run: npm run build
+      - run: npm test
+        env:
+          GIT_AUTHOR_NAME: ci
+          GIT_AUTHOR_EMAIL: ci@example.com
+          GIT_COMMITTER_NAME: ci
+          GIT_COMMITTER_EMAIL: ci@example.com
+      - name: Check package versions match the tag
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          for dir in core cli mcp; do
+            version=$(node -p "require('./packages/$dir/package.json').version")
+            if [ "v$version" != "$TAG" ]; then
+              echo "::error::packages/$dir is $version but the release tag is $TAG"
+              exit 1
+            fi
+          done
+      - name: Publish
+        env:
+          DIST_TAG: ${{ github.event.release.prerelease && 'next' || 'latest' }}
+        run: |
+          # core first: the CLI and MCP server depend on it.
+          for dir in core cli mcp; do
+            name=$(node -p "require('./packages/$dir/package.json').name")
+            version=$(node -p "require('./packages/$dir/package.json').version")
+            if npm view "$name@$version" version >/dev/null 2>&1; then
+              echo "$name@$version is already on npm, skipping"
+              continue
+            fi
+            npm publish -w "$name" --tag "$DIST_TAG"
+          done
