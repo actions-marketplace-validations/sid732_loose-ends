@@ -144,6 +144,28 @@ describe("config references", () => {
     expect(nodes).not.toContain(fileId("extension/unused.js"));
   });
 
+  it("finds React Email templates", () => {
+    const nodes = rootsOf({
+      "emails/package.json": { name: "emails", scripts: { dev: "email dev --dir ./templates" }, dependencies: { "react-email": "1" } },
+      "emails/emails/welcome.tsx": "export default function Welcome() { return null; }",
+      "emails/templates/reset.tsx": "export default function Reset() { return null; }",
+      "emails/ui/unused.tsx": "export const x = 1;",
+    });
+    expect(nodes).toEqual(expect.arrayContaining([fileId("emails/emails/welcome.tsx"), fileId("emails/templates/reset.tsx")]));
+    expect(nodes).not.toContain(fileId("emails/ui/unused.tsx"));
+  });
+
+  it("finds scripts that workflows run, but not files in paths filters", () => {
+    const nodes = rootsOf({
+      ".github/workflows/ci.yml": "on:\n  push:\n    paths:\n      - 'src/watched.ts'\njobs:\n  x:\n    steps:\n      - run: node scripts/release.mjs\n      - uses: actions/github-script@v7\n        with:\n          script: require('./.github/workflows/label.js')",
+      "scripts/release.mjs": "",
+      ".github/workflows/label.js": "",
+      "src/watched.ts": "",
+    });
+    expect(nodes).toEqual(expect.arrayContaining([fileId("scripts/release.mjs"), fileId(".github/workflows/label.js")]));
+    expect(nodes).not.toContain(fileId("src/watched.ts"));
+  });
+
   it("ignores manifest.json files that are not extension manifests", () => {
     const nodes = rootsOf({ "static/manifest.json": { name: "PWA", start_url: "/", icons: [{ src: "icon.js" }] }, "static/icon.js": "" });
     expect(nodes).not.toContain(fileId("static/icon.js"));

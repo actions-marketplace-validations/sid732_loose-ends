@@ -122,7 +122,7 @@ export function createServer(options: ServerOptions = {}): McpServer {
     {
       title: "Explain liveness",
       description: "Explain why a file, symbol (path#name), or dependency is live, test-only, uncertain, dormant, or orphaned, including the path from its root and what references it.",
-      inputSchema: { target: z.string().describe("A path like src/a.ts, a symbol like src/a.ts#run, or a package name."), root: rootArg },
+      inputSchema: { target: z.string().describe("A path like src/a.ts or app/views.py, a symbol like src/a.ts#run, or a package name."), root: rootArg },
       annotations: { readOnlyHint: true, idempotentHint: true },
     },
     async ({ target, root }) => {

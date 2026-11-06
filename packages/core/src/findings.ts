@@ -230,13 +230,15 @@ export function scanFindings(analysis: Analysis): Finding[] {
 function describeSymbol(node: GraphNode): string {
   const kind = node.declaration?.kind ?? "symbol";
   const noun = kind === "expression" ? "default export" : kind;
-  const exported = (node.exportedAs?.length ?? 0) > 0 ? "Exported " : "";
+  // Every top-level Python name is importable, so "exported" says nothing there.
+  const exported = (node.exportedAs?.length ?? 0) > 0 && !node.file?.endsWith(".py") && !node.file?.endsWith(".java") ? "Exported " : "";
   return `${exported}${exported ? noun : noun[0]!.toUpperCase() + noun.slice(1)} \`${node.name}\``;
 }
 
 function hintFor(node: GraphNode): string | undefined {
   if (node.kind !== "file") return undefined;
-  return "Import it from live code, add it to `entries`, or mark it with `// loose-ends-file: dormant <reason>`.";
+  const comment = node.file?.endsWith(".py") ? "#" : "//";
+  return `Import it from live code, add it to \`entries\`, or mark it with \`${comment} loose-ends-file: dormant <reason>\`.`;
 }
 
 /** Find the first edge on the base path that no longer keeps the node alive in head. */

@@ -51,11 +51,31 @@ export interface LooseEndsConfig {
   dependencies: boolean;
   /** Dependencies that are used implicitly (plugins, peer requirements, CLIs). */
   ignoreDependencies: string[];
+  /** Languages to analyze. Defaults to all supported languages. */
+  languages: Language[];
   /** Where the config was loaded from, if anywhere. */
   source?: string;
 }
 
-export type FrameworkName = "node" | "next" | "react" | "express" | "vite" | "jest" | "vitest" | "storybook";
+export type Language = "javascript" | "python" | "java";
+
+export type FrameworkName =
+  | "node"
+  | "next"
+  | "react"
+  | "express"
+  | "vite"
+  | "jest"
+  | "vitest"
+  | "storybook"
+  | "django"
+  | "flask"
+  | "fastapi"
+  | "celery"
+  | "airflow"
+  | "alembic"
+  | "streamlit"
+  | "pytest";
 
 export type FindingKind =
   /** Code added in this change that no production root reaches. */

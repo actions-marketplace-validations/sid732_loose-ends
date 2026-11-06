@@ -107,7 +107,7 @@ export function applyCleanup(root: string, plan: CleanupPlan): string[] {
     if (!existsSync(abs)) continue;
     let text = readFileSync(abs, "utf8");
     for (const { start, end } of ranges.sort((a, b) => b.start - a.start)) {
-      const lineStart = removeLeadingComments(text, start);
+      const lineStart = removeLeadingComments(text, start, path.endsWith(".py"));
       let stop = end;
       while (stop < text.length && (text[stop] === " " || text[stop] === "\t")) stop++;
       if (text[stop] === "\r") stop++;
@@ -115,16 +115,16 @@ export function applyCleanup(root: string, plan: CleanupPlan): string[] {
       if (text[stop] === "\n" && (lineStart === 0 || text[lineStart - 1] === "\n") && (lineStart < 2 || text[lineStart - 2] === "\n")) stop++;
       text = text.slice(0, lineStart) + text.slice(stop);
     }
-    // Removing a declaration can leave stacked or trailing blank lines behind.
-    text = text.replace(/\n{3,}/g, "\n\n").replace(/\s+$/, "") + "\n";
+    // Removing a declaration can leave stacked or trailing blank lines behind. Python style keeps two between definitions.
+    text = text.replace(path.endsWith(".py") ? /\n{4,}/g : /\n{3,}/g, path.endsWith(".py") ? "\n\n\n" : "\n\n").replace(/\s+$/, "") + "\n";
     writeFileSync(abs, text);
     touched.add(path);
   }
   return [...touched].sort();
 }
 
-/** Extend a removal back over JSDoc/line comments attached to the declaration. */
-function removeLeadingComments(text: string, start: number): number {
+/** Extend a removal back over JSDoc/line comments (or Python `#` comments) attached to the declaration. */
+function removeLeadingComments(text: string, start: number, python = false): number {
   let pos = start;
   for (;;) {
     let lineStart = text.lastIndexOf("\n", pos - 1) + 1;
@@ -133,6 +133,13 @@ function removeLeadingComments(text: string, start: number): number {
     const prevEnd = lineStart - 1;
     const prevStart = text.lastIndexOf("\n", prevEnd - 1) + 1;
     const prev = text.slice(prevStart, prevEnd).trim();
+    if (python) {
+      if (prev.startsWith("#") && !prev.startsWith("#!")) {
+        pos = prevStart;
+        continue;
+      }
+      return lineStart;
+    }
     if (prev.startsWith("//") || prev.endsWith("*/") || prev.startsWith("*")) {
       if (prev.endsWith("*/") && !prev.startsWith("/*")) {
         const open = text.lastIndexOf("/*", prevEnd);

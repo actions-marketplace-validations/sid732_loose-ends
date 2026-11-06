@@ -6,6 +6,8 @@ import { SOURCE_EXTENSIONS } from "./config.js";
 import { toRelative } from "./paths.js";
 import type { LooseEndsConfig } from "./types.js";
 import { discoverPackages, resolveExports, type WorkspacePackage } from "./workspace.js";
+import { discoverPythonProjects } from "./python/project.js";
+import { PythonResolver } from "./python/resolve.js";
 
 export type Resolution =
   | { kind: "file"; path: string; /** Workspace package the file belongs to, when imported by name. */ package?: string }
@@ -37,6 +39,7 @@ export class Resolver {
   private readonly byName = new Map<string, WorkspacePackage>();
   private readonly tsconfigCache = new Map<string, PathsConfig | undefined>();
   private readonly cache = new Map<string, Resolution>();
+  private pythonResolver?: PythonResolver;
 
   constructor(
     private readonly config: LooseEndsConfig,
@@ -46,7 +49,14 @@ export class Resolver {
     for (const pkg of this.packages) if (pkg.name) this.byName.set(pkg.name, pkg);
   }
 
+  /** Resolver for Python imports, created on first use. */
+  get python(): PythonResolver {
+    this.pythonResolver ??= new PythonResolver(this.files, discoverPythonProjects(this.config.root));
+    return this.pythonResolver;
+  }
+
   resolve(from: string, specifier: string): Resolution {
+    if (isPython(from)) return this.python.resolve(from, specifier);
     const key = `${posix.dirname(from)}\0${specifier}`;
     let hit = this.cache.get(key);
     if (!hit) {
@@ -209,6 +219,10 @@ export class Resolver {
     this.tsconfigCache.set(dir, result);
     return result;
   }
+}
+
+export function isPython(path: string): boolean {
+  return path.endsWith(".py") || path.endsWith(".ipynb");
 }
 
 function parentDir(dir: string): string {

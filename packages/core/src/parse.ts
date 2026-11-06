@@ -1,5 +1,6 @@
 import ts from "typescript";
 import { FINDING_KINDS } from "./config.js";
+import type { JavaImport, JavaType } from "./java/parse.js";
 
 /** Pseudo-declaration name representing a module's top-level side effects. */
 export const MODULE_BODY = "<module>";
@@ -23,6 +24,8 @@ export interface ImportBinding {
   local: string;
   /** Name in the target module: an export name, `default`, or `*`. */
   imported: string;
+  /** Python `import a.b`: the binding is the module with this dotted name (`a`). */
+  module?: string;
 }
 
 export interface ImportRecord {
@@ -70,6 +73,8 @@ export interface Declaration {
   shape: number[];
   /** Number of tokens in the declaration. */
   tokens: number;
+  /** How many of those tokens are string or number literals. */
+  literals?: number;
   /**
    * The initializer calls something at load time (`export const a = register({...})`),
    * so the declaration has side effects whenever its module loads.
@@ -120,6 +125,31 @@ export interface ModuleInfo {
   jsx: boolean;
   /** Number of source lines. */
   lines: number;
+  /** Source language. Absent for JavaScript and TypeScript. */
+  language?: "python" | "java";
+  /** Python: string literals that may name a module or `module:attr` (settings, task names, server commands). */
+  stringRefs?: StringRef[];
+  /** Python: the module runs as a script (`if __name__ == "__main__":`). */
+  mainGuard?: boolean;
+  /** Python: top-level code does real work (calls, loops, `with`), so the file is likely run directly. */
+  script?: boolean;
+  /** Python: names listed in `__all__`, when the module defines it. */
+  pythonAll?: string[];
+  /** Java: the `package` declaration ("" for the default package). */
+  javaPackage?: string;
+  /** Java: import declarations. */
+  javaImports?: JavaImport[];
+  /** Java: top-level types, in the same order as their declarations. */
+  javaTypes?: JavaType[];
+  /** Java: names of types nested inside the file's top-level types. */
+  javaNested?: string[];
+}
+
+export interface StringRef {
+  value: string;
+  /** Declaration that contains the string, or MODULE_BODY. */
+  owner: string;
+  line: number;
 }
 
 export function scriptKindFor(path: string): ts.ScriptKind {
@@ -464,6 +494,23 @@ function isNonReferenceIdentifier(id: ts.Identifier): boolean {
 
 const DIRECTIVE = /loose-ends(-file)?:\s*(entry|dormant|ignore)\b(.*)/;
 
+/** Parse the text of one comment line as a directive. */
+export function parseDirective(text: string): { file: boolean; action: DirectiveAction; kind?: string; reason: string } | undefined {
+  const match = DIRECTIVE.exec(text);
+  if (!match) return undefined;
+  const action = match[2] as DirectiveAction;
+  let rest = (match[3] ?? "").trim();
+  let kind: string | undefined;
+  if (action === "ignore") {
+    const first = rest.split(/\s+/)[0] ?? "";
+    if ((FINDING_KINDS as readonly string[]).includes(first)) {
+      kind = first;
+      rest = rest.slice(first.length).trim();
+    }
+  }
+  return { file: !!match[1], action, kind, reason: rest.replace(/^[-:\u2013\u2014]\s*/, "").trim() };
+}
+
 function collectDirectives(sf: ts.SourceFile, text: string, declarations: Declaration[]): Directive[] {
   const out: Directive[] = [];
   const seen = new Set<number>();
@@ -477,20 +524,10 @@ function collectDirectives(sf: ts.SourceFile, text: string, declarations: Declar
       const comment = text.slice(range.pos, range.end);
       for (const rawLine of comment.split(/\r?\n/)) {
         const cleaned = rawLine.replace(/^\s*(\/\/+|\/\*+|\*+)/, "").replace(/\*+\/\s*$/, "");
-        const match = DIRECTIVE.exec(cleaned);
-        if (!match) continue;
-        const scope = match[1] || !anchor.statement ? "file" : "declaration";
-        const action = match[2] as DirectiveAction;
-        let rest = (match[3] ?? "").trim();
-        let kind: string | undefined;
-        if (action === "ignore") {
-          const first = rest.split(/\s+/)[0] ?? "";
-          if ((FINDING_KINDS as readonly string[]).includes(first)) {
-            kind = first;
-            rest = rest.slice(first.length).trim();
-          }
-        }
-        const reason = rest.replace(/^[-:\u2013\u2014]\s*/, "").trim();
+        const parsed = parseDirective(cleaned);
+        if (!parsed) continue;
+        const scope = parsed.file || !anchor.statement ? "file" : "declaration";
+        const { action, kind, reason } = parsed;
         const symbols =
           scope === "declaration" && anchor.statement
             ? declarations.filter((d) => d.start === anchor.statement!.getStart(sf)).map((d) => d.name)
@@ -509,7 +546,7 @@ const SHINGLE = 4;
  * placeholders) and hash overlapping 4-token windows. Two implementations of
  * the same logic share most shingles even after renames.
  */
-export function fingerprint(text: string, variant: ts.LanguageVariant = ts.LanguageVariant.Standard): { shape: number[]; tokens: number } {
+export function fingerprint(text: string, variant: ts.LanguageVariant = ts.LanguageVariant.Standard): { shape: number[]; tokens: number; literals: number } {
   const scanner = ts.createScanner(ts.ScriptTarget.Latest, true, variant, text);
   const tokens: string[] = [];
   for (let kind = scanner.scan(); kind !== ts.SyntaxKind.EndOfFileToken; kind = scanner.scan()) {
@@ -524,10 +561,15 @@ export function fingerprint(text: string, variant: ts.LanguageVariant = ts.Langu
       tokens.push("$l");
     else tokens.push(String(kind));
   }
+  return shingles(tokens);
+}
+
+/** Hash overlapping windows of normalized tokens into a structural fingerprint. */
+export function shingles(tokens: string[]): { shape: number[]; tokens: number; literals: number } {
   const shape = new Set<number>();
   for (let i = 0; i + SHINGLE <= tokens.length; i++) shape.add(fnv(tokens.slice(i, i + SHINGLE).join(" ")));
   if (tokens.length > 0 && tokens.length < SHINGLE) shape.add(fnv(tokens.join(" ")));
-  return { shape: [...shape].sort((a, b) => a - b), tokens: tokens.length };
+  return { shape: [...shape].sort((a, b) => a - b), tokens: tokens.length, literals: tokens.filter((t) => t === "$l").length };
 }
 
 function fnv(text: string): number {

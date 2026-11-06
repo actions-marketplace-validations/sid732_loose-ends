@@ -6,6 +6,8 @@ import type { LooseEndsConfig } from "./types.js";
 import { manifestEntries, type WorkspacePackage } from "./workspace.js";
 import { FRAMEWORK_PROVIDERS } from "./frameworks.js";
 import { directiveRoots } from "./directives.js";
+import { pythonRoots } from "./python/roots.js";
+import { javaRoots } from "./java/roots.js";
 
 export type RootKind = "production" | "tooling" | "test";
 
@@ -27,6 +29,11 @@ export interface RootContext {
   add(root: Root): void;
   /** Mark a file and, optionally, all or some of its exports as roots. */
   addFile(path: string, root: Omit<Root, "node">, exports?: "all" | string[]): void;
+  /**
+   * A browser script loaded by a `<script>` tag without `type="module"`:
+   * every top-level declaration is a global another script may call.
+   */
+  addScript(path: string, root: Omit<Root, "node">): void;
 }
 
 export interface RootProvider {
@@ -112,7 +119,7 @@ export const testRoots: RootProvider = {
   },
 };
 
-export const DEFAULT_PROVIDERS: RootProvider[] = [packageRoots, configRoots, ...FRAMEWORK_PROVIDERS, directiveRoots, testRoots];
+export const DEFAULT_PROVIDERS: RootProvider[] = [packageRoots, configRoots, ...FRAMEWORK_PROVIDERS, pythonRoots, javaRoots, directiveRoots, testRoots];
 
 /** Run root providers and return de-duplicated roots in a stable order. */
 export function discoverRoots(config: LooseEndsConfig, build: BuildResult, providers: RootProvider[] = DEFAULT_PROVIDERS): Root[] {
@@ -135,6 +142,12 @@ export function discoverRoots(config: LooseEndsConfig, build: BuildResult, provi
         if (exportedAs.length === 0) continue;
         if (exports === "all" || exportedAs.some((e) => exports.includes(e))) ctx.add({ ...root, node: sym.id });
       }
+    },
+    addScript(path, root) {
+      const info = build.graph.modules.get(path);
+      const classic = !!info && info.imports.every((i) => i.kind === "dynamic" || i.kind === "require") && !info.commonjs && info.declarations.every((d) => d.exportedAs.length === 0);
+      ctx.addFile(path, root, "all");
+      if (classic) for (const sym of build.graph.symbolsOf(path)) ctx.add({ ...root, node: sym.id });
     },
   };
   for (const provider of providers) provider.discover(ctx);

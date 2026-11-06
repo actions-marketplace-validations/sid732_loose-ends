@@ -9,6 +9,7 @@ export {
   DEFAULT_INCLUDE,
   DEFAULT_TEST_PATTERNS,
   FINDING_KINDS,
+  LANGUAGES,
   SOURCE_EXTENSIONS,
   defaultConfig,
   loadConfig,
@@ -19,8 +20,23 @@ export type { Matcher } from "./paths.js";
 export { discoverFiles } from "./discover.js";
 export type { SourceFile } from "./discover.js";
 export { MODULE_BODY, collectReferences, createSource, fingerprint, parseModule, scriptKindFor } from "./parse.js";
-export type { Declaration, DeclarationKind, Directive, DirectiveAction, ImportBinding, ImportKind, ImportRecord, LocalExport, ModuleInfo } from "./parse.js";
-export { Resolver, splitPackage } from "./resolve.js";
+export type { Declaration, DeclarationKind, Directive, DirectiveAction, ImportBinding, ImportKind, ImportRecord, LocalExport, ModuleInfo, StringRef } from "./parse.js";
+export { Resolver, isPython, splitPackage } from "./resolve.js";
+export { parseNotebook, parsePython } from "./python/parse.js";
+export { tokenize as tokenizePython } from "./python/tokenize.js";
+export { parseToml } from "./python/toml.js";
+export { discoverPythonProjects, parseRequirements, requirementName } from "./python/project.js";
+export type { PythonDependency, PythonEntryPoint, PythonManifest, PythonProject } from "./python/project.js";
+export { PythonResolver } from "./python/resolve.js";
+export { pythonRoots } from "./python/roots.js";
+export { importNames, normalizeDist } from "./python/packages.js";
+export { parseJava, tokenizeJava } from "./java/parse.js";
+export type { JavaImport, JavaType } from "./java/parse.js";
+export { JavaLinker, JAVA_BUILTIN } from "./java/link.js";
+export { discoverJavaModules, gradleDependencies, mavenDependencies } from "./java/project.js";
+export type { JavaDependency, JavaModule } from "./java/project.js";
+export { javaRoots } from "./java/roots.js";
+export { groupPackages } from "./java/packages.js";
 export type { Resolution } from "./resolve.js";
 export { discoverPackages, flattenTarget, manifestEntries, readPackageJson, resolveExports } from "./workspace.js";
 export type { PackageJson, WorkspacePackage } from "./workspace.js";
@@ -35,6 +51,8 @@ export {
   addConfigReferences,
   docusaurusRoots,
   nextRoots,
+  reactEmailRoots,
+  workflowScriptRoots,
   serverlessRoots,
   storybookRoots,
   toolConfigRoots,

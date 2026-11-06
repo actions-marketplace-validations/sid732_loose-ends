@@ -234,6 +234,24 @@ export const storybookRoots: RootProvider = {
   },
 };
 
+/** React Email renders every template in its emails folder (`emails/`, or `--dir` in a script). */
+export const reactEmailRoots: RootProvider = {
+  name: "react-email",
+  discover(ctx) {
+    for (const pkg of ctx.build.resolver.packages) {
+      const deps = { ...pkg.manifest.dependencies, ...pkg.manifest.devDependencies };
+      if (!("react-email" in deps)) continue;
+      const dirs = new Set(["emails"]);
+      for (const script of Object.values(pkg.manifest.scripts ?? {})) {
+        const m = /\bemail\s+(?:dev|build|export|preview)\b.*?--dir[\s=]+["']?([\w./-]+)/.exec(script);
+        if (m) dirs.add(m[1]!.replace(/^\.\//, "").replace(/\/$/, ""));
+      }
+      const match = createMatcher([...dirs].map((d) => join2(pkg.dir, `${d}/**/*.${EXT}`)));
+      for (const file of ctx.files.filter(match)) ctx.addFile(file, { kind: "production", source: "framework:react-email", reason: "React Email template" }, "all");
+    }
+  },
+};
+
 /** Serverless function directories used by Vercel and Netlify. */
 export const serverlessRoots: RootProvider = {
   name: "serverless",
@@ -264,7 +282,38 @@ export const publicDirRoots: RootProvider = {
     const dirs = ctx.build.resolver.packages.map((p) => p.dir);
     if (dirs.length === 0) dirs.push("");
     const match = createMatcher(dirs.map((dir) => join2(dir, "public/**/*.{js,mjs,cjs}")));
-    for (const file of ctx.files.filter(match)) ctx.addFile(file, { kind: "production", source: "public-dir", reason: "served from public/" }, "all");
+    for (const file of ctx.files.filter(match)) ctx.addScript(file, { kind: "production", source: "public-dir", reason: "served from public/" });
+  },
+};
+
+/** Scripts that GitHub Actions workflows run (`node scripts/release.mjs`, `require('./.github/workflows/check.js')`). */
+export const workflowScriptRoots: RootProvider = {
+  name: "workflow-scripts",
+  discover(ctx) {
+    const files = new Set(ctx.files);
+    let workflows: string[];
+    try {
+      workflows = readdirSync(join(ctx.config.root, ".github/workflows")).filter((f) => /\.ya?ml$/.test(f));
+    } catch {
+      return;
+    }
+    for (const name of workflows) {
+      // `paths:` filters list files that trigger a workflow, not files it runs.
+      let filterIndent = -1;
+      const lines: string[] = [];
+      for (const line of readText(join(ctx.config.root, ".github/workflows", name)).split(/\r?\n/)) {
+        const indent = line.search(/\S/);
+        if (filterIndent !== -1 && (indent > filterIndent || indent === -1 || (indent === filterIndent && /^\s*-/.test(line)))) continue;
+        filterIndent = /^\s*(paths|paths-ignore):/.test(line) ? indent : -1;
+        if (filterIndent === -1) lines.push(line);
+      }
+      for (const m of lines.join("\n").matchAll(/[\w./-]+\.(?:[cm]?[jt]s)\b/g)) {
+        const rel = posix.normalize(m[0].replace(/^\.\//, ""));
+        for (const candidate of [rel, posix.join(".github/workflows", rel)]) {
+          if (files.has(candidate)) ctx.addFile(candidate, { kind: "tooling", source: `.github/workflows/${name}`, reason: `run by the ${name} workflow` });
+        }
+      }
+    }
   },
 };
 
@@ -356,7 +405,7 @@ export const docusaurusRoots: RootProvider = {
   },
 };
 
-export const FRAMEWORK_PROVIDERS: RootProvider[] = [nextRoots, viteRoots, storybookRoots, serverlessRoots, docusaurusRoots, webExtensionRoots, publicDirRoots, toolConfigRoots];
+export const FRAMEWORK_PROVIDERS: RootProvider[] = [nextRoots, viteRoots, storybookRoots, serverlessRoots, reactEmailRoots, docusaurusRoots, webExtensionRoots, publicDirRoots, workflowScriptRoots, toolConfigRoots];
 
 function eachPackage(ctx: RootContext, framework: FrameworkName, fn: (pkg: WorkspacePackage) => void) {
   const packages = ctx.build.resolver.packages;

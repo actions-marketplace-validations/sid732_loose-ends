@@ -97,11 +97,14 @@ const SKIP_IN_SNAPSHOT =
 /** Blobs above this size are skipped; config files above it are not read anyway. */
 const MAX_SNAPSHOT_BLOB = 8 * 1024 * 1024;
 /** Source files the analysis parses. */
-const SOURCE_FILE = /\.([cm]?[jt]sx?|mdx|vue|svelte|astro)$/i;
+const SOURCE_FILE = /\.([cm]?[jt]sx?|mdx|vue|svelte|astro|py|ipynb|java)$/i;
+/** JS/TS sources: non-source files next to them (HTML pages, manifests) can be entry points. */
+const JS_SOURCE = /\.([cm]?[jt]sx?|mdx|vue|svelte|astro)$/i;
 /** Files that anchor a JS/TS project directory. */
 const PROJECT_ANCHOR = /(^|\/)(package\.json|manifest\.json)$/;
-/** Config files kept wherever they are (tsconfig chains can point anywhere). */
-const CONFIG_FILE = /(^|\/)(package\.json|[jt]sconfig[\w.-]*\.json|\.[\w.-]*rc(\.\w+)?|[\w.-]+\.config\.\w+|loose-ends\.config\.json|vercel\.json|netlify\.toml|\.gitignore)$/;
+/** Config files kept wherever they are (tsconfig chains can point anywhere; deploy and CI files start Python processes). */
+const CONFIG_FILE =
+  /(^|\/)(package\.json|[jt]sconfig[\w.-]*\.json|\.[\w.-]*rc(\.\w+)?|[\w.-]+\.config\.\w+|loose-ends\.config\.json|vercel\.json|netlify\.toml|\.gitignore|pyproject\.toml|setup\.cfg|Pipfile|requirements[\w.-]*\.(txt|in)|requirements\/[\w.-]+\.txt|Procfile[\w.-]*|Dockerfile[\w.-]*|[\w.-]+\.dockerfile|(docker-)?compose[\w.-]*\.ya?ml|Makefile|justfile|Taskfile\.ya?ml|[\w.-]+\.sh|tox\.ini|app\.ya?ml|fly\.toml|render\.yaml|railway\.(json|toml)|nixpacks\.toml|serverless\.ya?ml|template\.ya?ml|supervisord[\w.-]*\.conf|[\w.-]+\.service|crontab|\.gitlab-ci\.yml|cloudbuild\.ya?ml|azure-pipelines\.ya?ml|bitbucket-pipelines\.yml|launch\.json|\.flaskenv|pom\.xml|build\.gradle(\.kts)?|settings\.gradle(\.kts)?|libs\.versions\.toml|AndroidManifest\.xml|[\w.-]+\.properties|[\w.-]+\.kts?)$|^\.github\/workflows\/|(^|\/)src\/[^/]+\/(resources|webapp|res)\/|(^|\/)META-INF\//;
 /** Upper bound on bytes requested from one `git cat-file --batch` call. */
 const BATCH_BYTES = 128 * 1024 * 1024;
 
@@ -130,7 +133,7 @@ export function snapshot(projectRoot: string, ref: string): Snapshot {
     // Non-source files (JSON data, HTML pages, assets) only matter next to JS/TS code.
     // Skipping the rest keeps snapshots of data-heavy repos fast.
     const codeDirs = new Set<string>();
-    for (const b of blobs) if (SOURCE_FILE.test(b.path) || PROJECT_ANCHOR.test(b.path)) codeDirs.add(parentDir(b.path));
+    for (const b of blobs) if (JS_SOURCE.test(b.path) || PROJECT_ANCHOR.test(b.path)) codeDirs.add(parentDir(b.path));
     const near = new Map<string, boolean>();
     const isNear = (dir: string) => {
       let value = near.get(dir);

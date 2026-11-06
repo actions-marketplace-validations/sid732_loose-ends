@@ -3,7 +3,11 @@ import { posix } from "node:path";
 import { discoverFiles, type SourceFile } from "./discover.js";
 import { createMatcher } from "./paths.js";
 import { MODULE_BODY, parseModule, type Declaration, type ImportBinding, type ImportRecord, type ModuleInfo } from "./parse.js";
-import { Resolver, type Resolution } from "./resolve.js";
+import { Resolver, isPython, type Resolution } from "./resolve.js";
+import { parseNotebook, parsePython } from "./python/parse.js";
+import { PythonLinker } from "./python/link.js";
+import { parseJava } from "./java/parse.js";
+import { JavaLinker } from "./java/link.js";
 import type { LooseEndsConfig } from "./types.js";
 
 export type NodeKind = "file" | "symbol" | "dependency";
@@ -114,6 +118,8 @@ export interface BuildResult {
   graph: LivenessGraph;
   files: SourceFile[];
   resolver: Resolver;
+  /** Index of Java types, when the project has Java files. */
+  java?: JavaLinker;
 }
 
 /** Parse every source file and connect imports, references, and dependencies. */
@@ -125,11 +131,12 @@ export function buildGraph(config: LooseEndsConfig, options: { read?: (abs: stri
   const graph = new LivenessGraph();
 
   for (const file of files) {
+    const parse = file.path.endsWith(".py") ? parsePython : file.path.endsWith(".ipynb") ? parseNotebook : file.path.endsWith(".java") ? parseJava : parseModule;
     let info: ModuleInfo;
     try {
-      info = parseModule(file.path, read(file.abs));
+      info = parse(file.path, read(file.abs));
     } catch {
-      info = parseModule(file.path, "");
+      info = parse(file.path, "");
     }
     graph.modules.set(file.path, info);
     graph.addNode({ id: fileId(file.path), kind: "file", file: file.path, isTest: file.isTest, line: 1 });
@@ -150,8 +157,14 @@ export function buildGraph(config: LooseEndsConfig, options: { read?: (abs: stri
   }
 
   const linker = new Linker(graph, resolver, files);
-  for (const file of files) linker.link(file);
-  return { graph, files, resolver };
+  const python = files.some((f) => isPython(f.path)) ? new PythonLinker(graph, resolver.python, new Set(files.filter((f) => f.isTest).map((f) => f.path))) : undefined;
+  const java = files.some((f) => f.path.endsWith(".java")) ? new JavaLinker(graph) : undefined;
+  for (const file of files) {
+    if (python && isPython(file.path)) python.link(file.path);
+    else if (java && file.path.endsWith(".java")) java.link(file.path);
+    else linker.link(file);
+  }
+  return { graph, files, resolver, java };
 }
 
 class Linker {

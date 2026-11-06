@@ -1,12 +1,21 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
-import type { DormantRule, FindingKind, FrameworkName, LooseEndsConfig, Suppression } from "./types.js";
+import type { DormantRule, FindingKind, FrameworkName, Language, LooseEndsConfig, Suppression } from "./types.js";
 
 export const CONFIG_FILES = ["loose-ends.config.json", ".loose-endsrc.json"] as const;
 
 export const SOURCE_EXTENSIONS = [".ts", ".tsx", ".mts", ".cts", ".js", ".jsx", ".mjs", ".cjs"] as const;
 
-export const DEFAULT_INCLUDE = ["**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}"];
+export const DEFAULT_INCLUDE = ["**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}", "**/*.py", "**/*.ipynb", "**/*.java"];
+
+export const LANGUAGES = ["javascript", "python", "java"] as const;
+
+/** File extensions of each language. */
+export const LANGUAGE_EXTENSIONS: Record<Language, RegExp> = {
+  javascript: /\.(ts|tsx|mts|cts|js|jsx|mjs|cjs|mdx|vue|svelte|astro)$/,
+  python: /\.(py|ipynb)$/,
+  java: /\.java$/,
+};
 
 export const DEFAULT_EXCLUDE = [
   "**/node_modules/**",
@@ -28,6 +37,20 @@ export const DEFAULT_EXCLUDE = [
   "**/*.d.mts",
   "**/*.d.cts",
   "**/*.min.js",
+  "**/__pycache__/**",
+  "**/.venv/**",
+  "**/venv/**",
+  "**/.tox/**",
+  "**/.nox/**",
+  "**/site-packages/**",
+  "**/.mypy_cache/**",
+  "**/.pytest_cache/**",
+  "**/.ruff_cache/**",
+  "**/.ipynb_checkpoints/**",
+  "**/*.egg-info/**",
+  "**/.eggs/**",
+  "**/target/**",
+  "**/.gradle/**",
 ];
 
 export const DEFAULT_TEST_PATTERNS = [
@@ -39,6 +62,19 @@ export const DEFAULT_TEST_PATTERNS = [
   "**/e2e/**",
   "**/*.stories.{ts,tsx,js,jsx,mdx}",
   "**/fixtures/**",
+  "**/test_*.py",
+  "**/tests.py",
+  "**/test.py",
+  "**/*_test.py",
+  "**/conftest.py",
+  "**/src/test/**",
+  "**/src/testFixtures/**",
+  "**/src/androidTest/**",
+  "**/src/integrationTest/**",
+  "**/*Test.java",
+  "**/*Tests.java",
+  "**/*IT.java",
+  "**/*TestCase.java",
 ];
 
 export const DEFAULT_FAIL_ON: FindingKind[] = [
@@ -62,7 +98,7 @@ export const FINDING_KINDS: readonly FindingKind[] = [
   "test-only",
 ];
 
-const FRAMEWORKS: readonly FrameworkName[] = ["node", "next", "react", "express", "vite", "jest", "vitest", "storybook"];
+const FRAMEWORKS: readonly FrameworkName[] = ["node", "next", "react", "express", "vite", "jest", "vitest", "storybook", "django", "flask", "fastapi", "celery", "airflow", "alembic", "streamlit", "pytest"];
 
 export class ConfigError extends Error {
   constructor(message: string, readonly source?: string) {
@@ -85,6 +121,7 @@ export function defaultConfig(root: string): LooseEndsConfig {
     failOn: [...DEFAULT_FAIL_ON],
     dependencies: true,
     ignoreDependencies: [],
+    languages: [...LANGUAGES],
   };
 }
 
@@ -154,6 +191,7 @@ export function parseConfig(raw: unknown, source?: string): RawConfig {
     "coverage",
     "dependencies",
     "ignoreDependencies",
+    "languages",
   ]);
   for (const key of Object.keys(input)) {
     if (!known.has(key)) throw new ConfigError(`unknown option "${key}"`, source);
@@ -200,6 +238,13 @@ export function parseConfig(raw: unknown, source?: string): RawConfig {
       if (typeof input[key] !== "string") throw new ConfigError(`"${key}" must be a string`, source);
       out[key] = input[key] as string;
     }
+  }
+  if ("languages" in input) {
+    const list = stringArray(input.languages, "languages", source);
+    for (const name of list) {
+      if (!(LANGUAGES as readonly string[]).includes(name)) throw new ConfigError(`unknown language "${name}" (expected one of ${LANGUAGES.join(", ")})`, source);
+    }
+    out.languages = list as Language[];
   }
   if ("dependencies" in input) {
     if (typeof input.dependencies !== "boolean") throw new ConfigError(`"dependencies" must be a boolean`, source);

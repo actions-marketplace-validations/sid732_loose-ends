@@ -2,6 +2,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import fg from "fast-glob";
 import ignore from "ignore";
+import { LANGUAGE_EXTENSIONS } from "./config.js";
 import { createMatcher } from "./paths.js";
 import type { LooseEndsConfig } from "./types.js";
 
@@ -29,8 +30,13 @@ export function discoverFiles(config: LooseEndsConfig): SourceFile[] {
     followSymbolicLinks: false,
     unique: true,
   });
+  const languages = config.languages ?? ["javascript", "python", "java"];
+  const allowed = (path: string) => {
+    const lang = LANGUAGE_EXTENSIONS.python.test(path) ? "python" : LANGUAGE_EXTENSIONS.java.test(path) ? "java" : "javascript";
+    return languages.includes(lang);
+  };
   return paths
-    .filter((path) => !gitignore.ignores(path))
+    .filter((path) => !gitignore.ignores(path) && allowed(path))
     .sort()
     .map((path) => ({ path, abs: join(config.root, path), isTest: isTest(path) }));
 }

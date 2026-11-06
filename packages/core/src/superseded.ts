@@ -41,6 +41,12 @@ export interface Replacement {
 
 const MIN_TOKENS = 12;
 
+/** Data declarations (lists of strings, lookup tables) all share one shape, so their structure says nothing. */
+const isData = (decl: { tokens: number; literals?: number }) => (decl.literals ?? 0) * 3 >= decl.tokens;
+
+/** Generated, append-only files (database migrations) repeat the same shape by design. */
+const GENERATED = /(^|\/)(migrations|versions)\/[^/]+\.py$/;
+
 /** Score how likely `fresh` (added in head) replaced `old` (live in base). */
 export function scoreReplacement(base: Analysis, head: Analysis, old: GraphNode, fresh: GraphNode, toHead: (id: string) => string): Replacement {
   const a = old.declaration!;
@@ -135,7 +141,7 @@ export function detectSuperseded(base: Analysis, head: Analysis, _changed: Chang
   );
   for (const fresh of added) {
     const decl = fresh.declaration!;
-    if (consumed.has(fresh.id) || decl.tokens < 40) continue;
+    if (consumed.has(fresh.id) || decl.tokens < 40 || isData(decl) || GENERATED.test(fresh.file ?? "")) continue;
     if (decl.kind !== "function" && decl.kind !== "class" && decl.kind !== "variable") continue;
     let best: { node: GraphNode; score: number } | undefined;
     for (const other of existing) {

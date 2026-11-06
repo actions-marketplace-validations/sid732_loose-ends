@@ -42,7 +42,7 @@
     "frameworks": {
       "oneOf": [
         { "const": "auto" },
-        { "type": "array", "items": { "enum": ["node", "next", "react", "express", "vite", "jest", "vitest", "storybook"] } }
+        { "type": "array", "items": { "enum": ["node", "next", "react", "express", "vite", "jest", "vitest", "storybook", "django", "flask", "fastapi", "celery", "airflow", "alembic", "streamlit", "pytest"] } }
       ]
     },
     "dormant": { "type": "array", "items": { "$ref": "#/$defs/rule" } },
@@ -64,6 +64,12 @@
     "tsconfig": { "type": "string" },
     "coverage": { "type": "string", "description": "istanbul coverage-final.json or lcov.info, relative to the project root." },
     "dependencies": { "type": "boolean", "default": true },
-    "ignoreDependencies": { "$ref": "#/$defs/globs" }
+    "ignoreDependencies": { "$ref": "#/$defs/globs" },
+    "languages": {
+      "type": "array",
+      "items": { "enum": ["javascript", "python", "java"] },
+      "uniqueItems": true,
+      "description": "Languages to analyze. Defaults to all supported languages."
+    }
   }
 }

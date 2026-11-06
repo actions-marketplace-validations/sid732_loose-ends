@@ -1,6 +1,6 @@
 ---
 name: check-loose-ends
-description: Check that code you added or changed is reachable from a real entry point before you finish. Use after editing TypeScript or JavaScript, before committing, or when asked whether a change left dead, orphaned, or duplicate code.
+description: Check that code you added or changed is reachable from a real entry point before you finish. Use after editing TypeScript, JavaScript, Python, or Java, before committing, or when asked whether a change left dead, orphaned, or duplicate code.
 ---
 
 # Check for loose ends
@@ -36,7 +36,7 @@ Exit code 0 means pass, 1 means blocking findings, 2 means the tool could not ru
 | `superseded` | You wrote a replacement and left the old one. | Delete the old implementation listed in `target`. |
 | `duplicate` | You re-implemented something that already exists. | Use the existing code in `related` and remove your copy. |
 | `test-only-addition` | Only tests use the new code. | Call it from production code, or move it into the test helpers. |
-| `unused-dependency` | A dependency nothing imports. | Remove it from package.json, or move it to devDependencies if only tests use it. |
+| `unused-dependency` | A dependency nothing imports. | Remove it from package.json (or requirements.txt, pyproject.toml, pom.xml, build.gradle), or move it to dev dependencies if only tests use it. |
 | `uncertain` | Reachability depends on a dynamic import. | Tell the user. Do not delete it. |
 | `invalid-suppression` | A suppression or dormant marker is broken. | Ask the user for the missing reason. |
 

@@ -124,7 +124,7 @@ function suggest(e: Explanation): string[] {
         "Only tests use this. Call it from production code, or move it next to the tests if it is a test helper.",
       ];
     case "uncertain":
-      return ["Liveness depends on a dynamic import. Add a literal import, list it in `entries`, or mark it with `// loose-ends: entry`."];
+      return ["Liveness depends on a dynamic import. Add a literal import, list it in `entries`, or mark it with a `loose-ends: entry` comment."];
     case "dormant":
       return [];
     case "orphaned": {
