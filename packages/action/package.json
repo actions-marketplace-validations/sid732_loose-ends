@@ -1,6 +1,6 @@
 {
   "name": "@loose-ends/action",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "private": true,
   "description": "GitHub Action entry point for Loose Ends. Bundled into action/index.mjs.",
   "license": "MIT",
@@ -18,6 +18,6 @@
     "bundle": "node build.mjs"
   },
   "dependencies": {
-    "@loose-ends/core": "1.1.0"
+    "@loose-ends/core": "1.1.1"
   }
 }
