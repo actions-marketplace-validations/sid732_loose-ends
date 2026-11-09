@@ -43,7 +43,7 @@ Loose Ends builds a Liveness Graph of TypeScript, JavaScript, Python, and Java c
 
 It is **not** an LLM guessing whether code looks unused, a general code reviewer, a formatter, or a security scanner. It does not claim that unobserved code is safe to delete, and it never deletes anything without deterministic evidence and a passing verification run.
 
-[bench/RESULTS.md](bench/RESULTS.md) has the results on public repositories, including about 700 Python and Java commits replayed through `check`.
+[bench/RESULTS.md](bench/RESULTS.md) has the results on public repositories, including about 700 Python and Java commits replayed through `check` and a sweep of 30 popular repositories.
 
 ## Install
 
@@ -180,7 +180,7 @@ Runtime hit counts from istanbul or lcov reports are attached to findings. Cover
 
 ## Scope
 
-- **TypeScript and JavaScript:** Node.js, React, Next.js, Vite, Express, npm/yarn/pnpm workspaces, browser extensions, and common test runners.
+- **TypeScript and JavaScript:** Node.js, React, Next.js, Vite, Express, NestJS, React Router framework mode, Vue, Svelte and SvelteKit, Astro, Nuxt, VitePress, npm/yarn/pnpm workspaces, browser extensions, and common test runners.
 - **Python:** packages and src layouts, relative and namespace imports, `__init__.py` re-exports and `__all__`, scripts, notebooks, pyproject/setup.py entry points, Django, Flask, FastAPI, Celery, Alembic, Airflow, Streamlit, pytest, and dependencies in `requirements*.txt`, `pyproject.toml`, `setup.py`, `setup.cfg`, and `Pipfile`.
 - **Java:** top-level classes, interfaces, enums, and records; imports, same-package and fully qualified references; `main` methods; Spring, Jakarta EE, CDI, JAX-RS, Quarkus, Micronaut, MyBatis, MapStruct, Dagger/Hilt, and Android; class names in resource files; Maven and Gradle (including version catalogs) dependencies; and Java code used from Kotlin.
 

@@ -6,7 +6,7 @@ export const CONFIG_FILES = ["loose-ends.config.json", ".loose-endsrc.json"] as 
 
 export const SOURCE_EXTENSIONS = [".ts", ".tsx", ".mts", ".cts", ".js", ".jsx", ".mjs", ".cjs"] as const;
 
-export const DEFAULT_INCLUDE = ["**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}", "**/*.py", "**/*.ipynb", "**/*.java"];
+export const DEFAULT_INCLUDE = ["**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs,vue,svelte,astro}", "**/*.py", "**/*.ipynb", "**/*.java"];
 
 export const LANGUAGES = ["javascript", "python", "java"] as const;
 

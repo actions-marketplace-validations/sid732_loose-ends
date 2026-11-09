@@ -1,5 +1,6 @@
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join, posix } from "node:path";
+import fg from "fast-glob";
 import { createMatcher } from "./paths.js";
 import type { RootContext, RootProvider } from "./roots.js";
 import type { FrameworkName } from "./types.js";
@@ -23,6 +24,12 @@ export function detectFrameworks(pkg: WorkspacePackage): Set<FrameworkName> {
   if (names.includes("jest")) out.add("jest");
   if (names.includes("vitest")) out.add("vitest");
   if (names.some((n) => n.startsWith("@storybook/") || n === "storybook")) out.add("storybook");
+  if (names.includes("@sveltejs/kit")) out.add("sveltekit");
+  if (names.includes("astro")) out.add("astro");
+  if (names.includes("@nestjs/core")) out.add("nest");
+  if (names.includes("@react-router/dev")) out.add("react-router");
+  if (names.includes("vitepress")) out.add("vitepress");
+  if (names.includes("nuxt") || names.includes("nuxt3")) out.add("nuxt");
   return out;
 }
 
@@ -119,6 +126,147 @@ export const nextRoots: RootProvider = {
         for (const file of ctx.files.filter(match)) {
           if (/\.(test|spec)\./.test(file)) continue;
           ctx.addFile(file, { kind: isConfig ? "tooling" : "production", source: "framework:next", reason }, NEXT_ROUTE_EXPORTS);
+        }
+      }
+    });
+  },
+};
+
+/** SvelteKit: route files, hooks, params matchers, and service workers are loaded by the framework. */
+export const svelteKitRoots: RootProvider = {
+  name: "sveltekit",
+  discover(ctx) {
+    eachPackage(ctx, "sveltekit", (pkg) => {
+      const globs = [
+        [join2(pkg.dir, "src/routes/**/+*.{svelte,ts,js}"), "SvelteKit route file"],
+        [join2(pkg.dir, "src/{hooks,hooks.client,hooks.server,hooks.universal,service-worker}.{ts,js}"), "SvelteKit hook"],
+        [join2(pkg.dir, "src/{hooks,service-worker}/index.{ts,js}"), "SvelteKit hook"],
+        [join2(pkg.dir, "src/params/*.{ts,js}"), "SvelteKit param matcher"],
+        [join2(pkg.dir, "svelte.config.{js,mjs,ts}"), "SvelteKit config"],
+      ];
+      for (const [glob, reason] of globs) {
+        const match = createMatcher([glob!]);
+        for (const file of ctx.files.filter(match)) {
+          if (/\.(test|spec)\./.test(file)) continue;
+          ctx.addFile(file, { kind: reason!.endsWith("config") ? "tooling" : "production", source: "framework:sveltekit", reason: reason! });
+        }
+      }
+    });
+  },
+};
+
+/** Astro: pages, middleware, content config, and actions are loaded by the framework. */
+export const astroRoots: RootProvider = {
+  name: "astro",
+  discover(ctx) {
+    eachPackage(ctx, "astro", (pkg) => {
+      const globs = [
+        [join2(pkg.dir, "src/pages/**/*.{astro,md,mdx,ts,js}"), "Astro page"],
+        [join2(pkg.dir, "src/{middleware,content.config,content/config,actions/index}.{ts,js}"), "Astro special file"],
+        [join2(pkg.dir, "astro.config.{js,mjs,ts,mts}"), "Astro config"],
+      ];
+      for (const [glob, reason] of globs) {
+        const match = createMatcher([glob!]);
+        for (const file of ctx.files.filter(match)) {
+          if (/\.(test|spec)\./.test(file)) continue;
+          ctx.addFile(file, { kind: reason!.endsWith("config") ? "tooling" : "production", source: "framework:astro", reason: reason! });
+        }
+      }
+    });
+  },
+};
+
+/** NestJS: the Nest CLI builds and starts `sourceRoot/entryFile` from nest-cli.json (default `src/main`). */
+export const nestRoots: RootProvider = {
+  name: "nest",
+  discover(ctx) {
+    eachPackage(ctx, "nest", (pkg) => {
+      let sourceRoot = "src";
+      let entryFile = "main";
+      const extra: string[] = [];
+      try {
+        const cli = JSON.parse(readFileSync(join(ctx.config.root, pkg.dir, "nest-cli.json"), "utf8"));
+        sourceRoot = cli.sourceRoot ?? sourceRoot;
+        entryFile = cli.entryFile ?? entryFile;
+        for (const project of Object.values(cli.projects ?? {}) as Array<{ sourceRoot?: string; entryFile?: string }>) {
+          if (project.sourceRoot) extra.push(`${project.sourceRoot}/${project.entryFile ?? "main"}`);
+        }
+      } catch {
+        // No nest-cli.json: the defaults apply.
+      }
+      for (const entry of [`${sourceRoot}/${entryFile}`, ...extra]) {
+        const match = createMatcher([join2(pkg.dir, `${entry}.{ts,js}`)]);
+        for (const file of ctx.files.filter(match)) ctx.addFile(file, { kind: "production", source: "framework:nest", reason: "NestJS entry file (nest-cli.json)" });
+      }
+    });
+  },
+};
+
+/**
+ * React Router framework mode: root, entry files, and `routes.ts` live in the
+ * app directory (`appDirectory` in react-router.config, default `app`). Route
+ * modules are named by path strings in routes.ts, or found by `flatRoutes()`.
+ */
+export const reactRouterRoots: RootProvider = {
+  name: "react-router",
+  discover(ctx) {
+    eachPackage(ctx, "react-router", (pkg) => {
+      let appDir = "app";
+      for (const name of ["react-router.config.ts", "react-router.config.js"]) {
+        const abs = join(ctx.config.root, pkg.dir, name);
+        if (!existsSync(abs)) continue;
+        appDir = /appDirectory\s*:\s*["'`]([^"'`]+)["'`]/.exec(readFileSync(abs, "utf8"))?.[1]?.replace(/^\.\//, "") ?? appDir;
+        ctx.addFile(join2(pkg.dir, name), { kind: "tooling", source: "framework:react-router", reason: "React Router config" });
+      }
+      const base = join2(pkg.dir, appDir);
+      const add = (file: string, reason: string) => ctx.addFile(file, { kind: "production", source: "framework:react-router", reason }, NEXT_ROUTE_EXPORTS);
+      for (const file of ctx.files.filter(createMatcher([`${base}/{root,routes,entry.client,entry.server,entry.rsc,entry.ssr}.${EXT}`]))) add(file, "React Router app file");
+      const routesFile = ctx.files.find(createMatcher([`${base}/routes.${EXT}`]));
+      if (!routesFile) return;
+      const text = readFileSync(join(ctx.config.root, routesFile), "utf8");
+      if (/flatRoutes\s*\(/.test(text)) {
+        for (const file of ctx.files.filter(createMatcher([`${base}/routes/**/*.${EXT}`]))) add(file, "React Router route module (flatRoutes)");
+      }
+      for (const m of text.matchAll(/["'`]([^"'`\s]+\.(?:tsx?|jsx?|mdx))["'`]/g)) {
+        const file = posix.normalize(posix.join(base, m[1]!));
+        if (ctx.files.includes(file)) add(file, "React Router route module (routes.ts)");
+      }
+    });
+  },
+};
+
+/** Nuxt: these directories are auto-imported or file-routed, so nothing imports them explicitly. */
+export const nuxtRoots: RootProvider = {
+  name: "nuxt",
+  discover(ctx) {
+    eachPackage(ctx, "nuxt", (pkg) => {
+      const dirs = "{components,pages,layouts,composables,utils,plugins,middleware,server,modules}";
+      const globs = [`${dirs}/**/*.{vue,${EXT.slice(1, -1)}}`, `app/${dirs}/**/*.{vue,${EXT.slice(1, -1)}}`, `{,app/}{app,error}.vue`, `{,app/}app.config.{ts,js}`];
+      const match = createMatcher(globs.map((g) => join2(pkg.dir, g)));
+      for (const file of ctx.files.filter(match)) {
+        if (/\.(test|spec)\./.test(file)) continue;
+        ctx.addFile(file, { kind: "production", source: "framework:nuxt", reason: "Nuxt auto-imported or file-routed file" });
+      }
+      for (const file of ctx.files.filter(createMatcher([join2(pkg.dir, "nuxt.config.{ts,js,mjs}")]))) {
+        ctx.addFile(file, { kind: "tooling", source: "framework:nuxt", reason: "Nuxt config" });
+      }
+    });
+  },
+};
+
+/** VitePress: the site config and the theme entry are loaded by the dev server. */
+export const vitePressRoots: RootProvider = {
+  name: "vitepress",
+  discover(ctx) {
+    eachPackage(ctx, "vitepress", (pkg) => {
+      const match = createMatcher([join2(pkg.dir, `**/.vitepress/{config,theme/index}.{ts,js,mts,mjs}`)]);
+      for (const file of ctx.files.filter(match)) ctx.addFile(file, { kind: "production", source: "framework:vitepress", reason: "VitePress config or theme entry" });
+      // Markdown pages import components in `<script setup>`; pages are not parsed, so their relative imports become roots.
+      for (const md of fg.sync(join2(pkg.dir, "**/*.md"), { cwd: ctx.config.root, ignore: ["**/node_modules/**"] })) {
+        const text = readFileSync(join(ctx.config.root, md), "utf8");
+        for (const m of text.matchAll(/\bfrom\s+["'](\.{1,2}\/[^"']+)["']/g)) {
+          const file = posix.normalize(posix.join(posix.dirname(md), m[1]!));
+          if (ctx.files.includes(file)) ctx.addFile(file, { kind: "production", source: "framework:vitepress", reason: `imported by ${md}` });
         }
       }
     });
@@ -405,7 +553,7 @@ export const docusaurusRoots: RootProvider = {
   },
 };
 
-export const FRAMEWORK_PROVIDERS: RootProvider[] = [nextRoots, viteRoots, storybookRoots, serverlessRoots, reactEmailRoots, docusaurusRoots, webExtensionRoots, publicDirRoots, workflowScriptRoots, toolConfigRoots];
+export const FRAMEWORK_PROVIDERS: RootProvider[] = [nextRoots, viteRoots, svelteKitRoots, astroRoots, nestRoots, reactRouterRoots, vitePressRoots, nuxtRoots, storybookRoots, serverlessRoots, reactEmailRoots, docusaurusRoots, webExtensionRoots, publicDirRoots, workflowScriptRoots, toolConfigRoots];
 
 function eachPackage(ctx: RootContext, framework: FrameworkName, fn: (pkg: WorkspacePackage) => void) {
   const packages = ctx.build.resolver.packages;

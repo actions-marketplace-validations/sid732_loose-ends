@@ -9,7 +9,9 @@ import { discoverJavaModules, type JavaModule } from "./project.js";
 const FRAMEWORK_ANNOTATIONS = new Set(
   [
     // Spring
-    "SpringBootApplication", "Component", "Service", "Repository", "Controller", "RestController", "Configuration", "AutoConfiguration",
+    "SpringBootApplication", "Component",
+    // Jenkins plugins and core
+    "Extension", "Service", "Repository", "Controller", "RestController", "Configuration", "AutoConfiguration",
     "ControllerAdvice", "RestControllerAdvice", "ConfigurationProperties", "JsonComponent", "EnableAutoConfiguration", "SpringBootConfiguration",
     "Endpoint", "WebEndpoint", "FeignClient", "Aspect", "Document", "Node", "RepositoryRestResource", "Route",
     // Jakarta EE / JPA / CDI / JAX-RS / servlets
@@ -25,6 +27,8 @@ const FRAMEWORK_ANNOTATIONS = new Set(
 );
 /** Method and parameter annotations that make a framework call into the type (`@Incoming`, `@Scheduled`, `@Observes`). */
 const MEMBER_ANNOTATIONS = new Set([
+  // JMH and Caliper benchmarks
+  "Benchmark",
   "Funq", "Route", "RouteFilter", "Incoming", "Outgoing", "Scheduled", "EventListener", "TransactionalEventListener", "KafkaListener",
   "RabbitListener", "JmsListener", "SqsListener", "StreamListener", "Observes", "ObservesAsync", "Bean", "Produces", "ConsumeEvent",
   "ServerExceptionMapper", "ServerRequestFilter", "ServerResponseFilter", "DgsQuery", "DgsMutation", "DgsData", "DgsSubscription",
@@ -98,12 +102,13 @@ export const javaRoots: RootProvider = {
       }
     }
 
-    // A library module (no application plugin, no main) publishes its public types.
+    // A library module (no application plugin, and no main unless the build is published) keeps its public types.
+    // Source layout varies (`src/main/java`, `guava/src`), so every non-test file of the module counts.
+    const published = modules.some((m) => PUBLISHED.test(m.text));
     for (const module of modules) {
-      if (module.app || mainModules.has(module.dir) || /<packaging>\s*pom\s*<\/packaging>/.test(module.text)) continue;
-      const prefix = `${module.dir ? module.dir + "/" : ""}src/main/java/`;
+      if (module.app || (mainModules.has(module.dir) && !published) || /<packaging>\s*pom\s*<\/packaging>/.test(module.text)) continue;
       for (const path of javaFiles) {
-        if (!path.startsWith(prefix) || moduleOf(modules, path) !== module) continue;
+        if (moduleOf(modules, path) !== module || NOT_LIBRARY_SOURCE.test(path)) continue;
         for (const type of ctx.build.graph.modules.get(path)?.javaTypes ?? []) {
           if (type.public) ctx.add({ node: symbolId(path, type.name), kind: "production", source: module.buildFile, reason: `public type of the ${module.name || "root"} library` });
         }
@@ -111,6 +116,11 @@ export const javaRoots: RootProvider = {
     }
   },
 };
+
+/** Build settings that only matter when the artifact is published to a repository. */
+const PUBLISHED = /<distributionManagement>|<scm>|<developers>|maven-publish|com\.vanniktech\.maven\.publish|nexus-staging|central-publishing/;
+/** Test, benchmark, and sample sources inside a library module. */
+const NOT_LIBRARY_SOURCE = /(^|\/)src\/(test|testFixtures|androidTest|integrationTest|jmh)\/|(Test|Tests|IT|TestCase)\.java$|(^|\/)(examples?|samples?)\//;
 
 /** The innermost build module containing a file. */
 function moduleOf(modules: JavaModule[], path: string): JavaModule | undefined {

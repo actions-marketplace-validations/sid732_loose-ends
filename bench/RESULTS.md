@@ -128,7 +128,7 @@ Run on 2026-11-06 against clones of six public Java repositories. `scan` takes 0
 | [square/javapoet](https://github.com/square/javapoet) | `b9017a9` | 39 | none | A library: its public types are API. |
 | [quarkusio/quarkus-quickstarts](https://github.com/quarkusio/quarkus-quickstarts) | `81a5844` | 649 | 1 orphaned | `QuoteDeserializer` in the Kafka producer is never used. |
 | [TeamNewPipe/NewPipe](https://github.com/TeamNewPipe/NewPipe) | `f42fe70` | 293 (and 293 Kotlin) | none | |
-| [iluwatar/java-design-patterns](https://github.com/iluwatar/java-design-patterns) | `4cabb20` | 2,042 | 1 orphaned, 13 test-only, 2 unused dependencies | `ProductCatalogService` has no users, the 13 test-only types are only used by tests, `swing-layout` is never imported, and `system-lambda` is a compile dependency only tests use. |
+| [iluwatar/java-design-patterns](https://github.com/iluwatar/java-design-patterns) | `4cabb20` | 2,042 | 1 orphaned, 13 test-only, 1 unused dependency | `ProductCatalogService` has no users, the 13 test-only types are only used by tests, and `swing-layout` is never imported. (An earlier version also reported `system-lambda`; the parent pom's `dependencyManagement` makes it test scope, which is now read.) |
 
 `check` was run on every commit that touched Java, build files, or resources in the cloned history: 445 commits. One failed, and it was right: a NewPipe commit replaced `FocusAwareSeekBar` in the player layout, which left the class unused until a later commit subclassed it. The warnings were near-identical classes (small DTOs, and code copied from one quickstart into another) and two classes a new pattern added that only its tests used.
 
@@ -146,6 +146,34 @@ The agent-style change from the cal.com test, applied to spring-petclinic (copy 
 | Java classes used only from Kotlin | NewPipe | Kotlin imports, same-package names, and fully qualified names count |
 | JS scripts run by GitHub workflows (`require('./.github/workflows/x.js')`) | NewPipe, shadcn/ui, Ghost | New provider; files in `paths:` filters are not roots |
 | `javax.xml.bind` treated as part of the JDK | java-design-patterns | It left the JDK in Java 11 |
+
+## Sweep of 30 popular repositories
+
+`scan` was run on shallow clones of 10 well-known repositories per language, none of them used to build the tool: axios, express, zustand, TanStack Query, zod, React Router, Prettier, Fastify, NestJS, tRPC; requests, click, Starlette, HTTPie, Black, Scrapy, Poetry, Pydantic, Jinja, Rich; Gson, jsoup, Commons Lang, MyBatis, Guava, RxJava, ZXing, Netty, Jenkins, Commons IO. None crashed, and the largest (Netty, 2,500 Java files) took 2.3 s.
+
+Python came back nearly clean on the first run (0 to 11 orphaned files per repo). JS/TS and Java exposed gaps, grouped by cause rather than one by one:
+
+| Gap | Effect before | Fix |
+|---|---|---|
+| Vue, Svelte, and Astro components were not parsed | everything imported only from a component looked unused | `<script>` blocks and Astro frontmatter are parsed; names used in the template count |
+| No SvelteKit, Astro, Nuxt, NestJS, React Router framework mode, or VitePress conventions | route files, pages, and app entries were orphaned | entry points for each, plus SvelteKit's `$lib` alias and components imported from VitePress Markdown |
+| Java library rule only looked under `src/main/java` and skipped any module with a `main` | Guava's public API (670 files), RxJava, Netty reported | every non-test file of a library module counts; a module with a `main` is still a library when the build is published (`<scm>`, `distributionManagement`, `maven-publish`) |
+| `@Extension` (Jenkins) and `@Benchmark` (JMH, Caliper) | extensions and benchmarks orphaned | treated as entry points |
+| Maven scope inherited from a parent's `dependencyManagement` was ignored | test libraries reported as unused compile dependencies (Netty: 64) | managed scope is read |
+| Samples, templates, and test packages reported every dependency | hundreds of unused-dependency findings for code already reported as orphaned or test-only | packages with no production-live file are skipped |
+| maturin `python-source` and setuptools `where` layouts | pydantic-core's public API (201 symbols) reported | read from `pyproject.toml` |
+
+| Repository | Orphaned files before → after | Unused dependencies before → after |
+|---|---:|---:|
+| TanStack Query | 344 → 139 | 170 → 39 |
+| React Router | 247 → 143 | 101 → 49 |
+| NestJS | 274 → 274 | 18 → 3 |
+| Guava | 670 → 58 | 2 → 0 |
+| RxJava | 66 → 1 | 0 → 0 |
+| Netty | 142 → 20 | 64 → 9 |
+| Jenkins | 229 → 160 | 21 → 21 |
+
+What remains is mostly code nothing in the repository runs: example and sample folders outside the workspace (NestJS `sample/`, Express `examples/`), benchmark and tree-shaking scripts run by hand (zod), Vue 2 examples excluded from the TanStack workspace, and Jenkins core classes kept as API for external plugins, which the tool cannot see. Spot checks of the rest found real dead code, such as an unused `Java8Compatibility` copy in Guava's `base` package.
 
 ## Reproduce
 

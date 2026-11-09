@@ -42,7 +42,7 @@
     "frameworks": {
       "oneOf": [
         { "const": "auto" },
-        { "type": "array", "items": { "enum": ["node", "next", "react", "express", "vite", "jest", "vitest", "storybook", "django", "flask", "fastapi", "celery", "airflow", "alembic", "streamlit", "pytest"] } }
+        { "type": "array", "items": { "enum": ["node", "next", "react", "express", "vite", "jest", "vitest", "storybook", "sveltekit", "astro", "nest", "react-router", "vitepress", "nuxt", "django", "flask", "fastapi", "celery", "airflow", "alembic", "streamlit", "pytest"] } }
       ]
     },
     "dormant": { "type": "array", "items": { "$ref": "#/$defs/rule" } },

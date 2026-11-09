@@ -67,6 +67,15 @@ export function dependencyReport(analysis: Analysis): DependencyReport[] {
     const scripts = Object.values(pkg.manifest.scripts ?? {}).join("\n");
     const configs = configText(analysis.config.root, pkg.dir);
     const nested = packages.filter((p) => p !== pkg && p.dir.startsWith(pkg.dir ? pkg.dir + "/" : "")).map((p) => p.dir);
+    // A package with no production-live source file (a sample, a template, a test suite) is reported
+    // through its files already, and its dependencies serve tests or nothing; listing each would only repeat that.
+    const own = [...analysis.build.graph.modules.keys()].filter(
+      (f) => !isPython(f) && !f.endsWith(".java") && (pkg.dir === "" || f.startsWith(pkg.dir + "/")) && !nested.some((d) => f.startsWith(d + "/")),
+    );
+    if (own.length > 0 && !own.some((f) => {
+        const state = stateOf(analysis, fileId(f));
+        return state.liveness === "live" ? state.root?.kind !== "tooling" : !["orphaned", "test-only"].includes(state.liveness);
+      })) continue;
     for (const name of Object.keys(deps).sort()) {
       let use: DependencyUse;
       if (ignore(name)) use = "ignored";

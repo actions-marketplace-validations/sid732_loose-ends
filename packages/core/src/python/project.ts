@@ -33,6 +33,8 @@ export interface PythonProject {
   entryPoints: PythonEntryPoint[];
   /** Built and published as a package (not an app): its public modules are its API. */
   library: boolean;
+  /** Extra package directories relative to `dir`, such as maturin's `python-source` or setuptools' `where`. */
+  sourceDirs: string[];
   /** Raw text of config sections that may name plugins (pyproject, setup.cfg). */
   configText: string;
 }
@@ -79,11 +81,18 @@ function readProject(root: string, dir: string): PythonProject {
     }
   };
   const rel = (name: string) => (dir ? `${dir}/${name}` : name);
-  const project: PythonProject = { dir, name: "", manifests: [], entryPoints: [], library: false, configText: "" };
+  const project: PythonProject = { dir, name: "", manifests: [], entryPoints: [], library: false, sourceDirs: [], configText: "" };
 
   const pyprojectText = read("pyproject.toml");
   const pyproject = pyprojectText ? parseToml(pyprojectText) : undefined;
   if (pyproject && pyprojectText) readPyproject(project, pyproject, pyprojectText, rel("pyproject.toml"));
+  if (pyproject) {
+    const tool = (pyproject.tool ?? {}) as Record<string, any>;
+    const where = tool.setuptools?.packages?.find?.where;
+    for (const d of [tool.maturin?.["python-source"], ...(Array.isArray(where) ? where : [where])]) {
+      if (typeof d === "string" && d && d !== "." && d !== "src") project.sourceDirs.push(d.replace(/^\.\//, "").replace(/\/$/, ""));
+    }
+  }
 
   const setupPy = read("setup.py");
   if (setupPy) readSetupPy(project, setupPy, rel("setup.py"));

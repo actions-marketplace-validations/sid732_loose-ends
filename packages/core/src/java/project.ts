@@ -33,17 +33,33 @@ export function discoverJavaModules(root: string): JavaModule[] {
   const files = fg.sync(["{,*/,*/*/,*/*/*/,*/*/*/*/}{pom.xml,build.gradle,build.gradle.kts}"], { cwd: root, ignore: IGNORE, onlyFiles: true }).sort();
   const catalog = readCatalog(root);
   const modules: JavaModule[] = [];
+  const texts = new Map<string, string>();
   for (const buildFile of files) {
-    let text = "";
     try {
-      text = readFileSync(join(root, buildFile), "utf8");
+      texts.set(buildFile, readFileSync(join(root, buildFile), "utf8"));
     } catch {
-      continue;
+      // Unreadable build file: skipped.
     }
+  }
+  // Scopes set in any <dependencyManagement> (usually the parent pom) apply where a module omits <scope>.
+  const managed = new Map<string, string>();
+  for (const [file, t] of texts) {
+    if (!file.endsWith("pom.xml")) continue;
+    for (const section of xmlBlocks(t, "<dependencyManagement>", "</dependencyManagement>")) {
+      for (const m of xmlBlocks(section.inner, "<dependency>", "</dependency>")) {
+        const tag = (name: string) => new RegExp(`<${name}>\\s*([^<]*?)\\s*</${name}>`).exec(m.inner)?.[1];
+        const scope = tag("scope");
+        if (scope && tag("groupId") && tag("artifactId")) managed.set(`${tag("groupId")}:${tag("artifactId")}`, scope);
+      }
+    }
+  }
+  for (const buildFile of files) {
+    const text = texts.get(buildFile);
+    if (text === undefined) continue;
     const dir = posix.dirname(buildFile) === "." ? "" : posix.dirname(buildFile);
     const isMaven = buildFile.endsWith("pom.xml");
     const name = (isMaven ? /<artifactId>([^<]+)<\/artifactId>/.exec(stripMaven(text, false))?.[1] : undefined) ?? (dir ? posix.basename(dir) : "");
-    const dependencies = isMaven ? mavenDependencies(text) : gradleDependencies(text, catalog);
+    const dependencies = isMaven ? mavenDependencies(text, managed) : gradleDependencies(text, catalog);
     const hasManifest = existsSync(join(root, dir, "src/main/AndroidManifest.xml"));
     modules.push({ dir, buildFile, name, dependencies, app: APP_SIGNAL.test(text) || (hasManifest && /com\.android\.application/.test(text)), text });
   }
@@ -53,30 +69,63 @@ export function discoverJavaModules(root: string): JavaModule[] {
   return modules;
 }
 
+interface XmlBlock {
+  index: number;
+  end: number;
+  inner: string;
+}
+
+/** Each `open ... close` span, nearest close first. A linear scan: lazy regexes backtrack on many unclosed tags. */
+function xmlBlocks(text: string, open: string, close: string): XmlBlock[] {
+  const out: XmlBlock[] = [];
+  let i = 0;
+  for (;;) {
+    const start = text.indexOf(open, i);
+    if (start === -1) break;
+    const stop = text.indexOf(close, start + open.length);
+    if (stop === -1) break;
+    out.push({ index: start, end: stop + close.length, inner: text.slice(start + open.length, stop) });
+    i = stop + close.length;
+  }
+  return out;
+}
+
+/** Replace spans with spaces, keeping line breaks so line numbers hold. */
+function blankBlocks(text: string, open: string, close: string, first = false): string {
+  let out = "";
+  let i = 0;
+  for (const b of xmlBlocks(text, open, close)) {
+    out += text.slice(i, b.index) + text.slice(b.index, b.end).replace(/[^\n]/g, " ");
+    i = b.end;
+    if (first) break;
+  }
+  return out + text.slice(i);
+}
+
 function stripMaven(text: string, dropSections = true): string {
-  let out = text.replace(/<!--[\s\S]*?-->/g, (m) => m.replace(/[^\n]/g, " "));
+  let out = blankBlocks(text, "<!--", "-->");
   // The parent's coordinates come first; drop them so the module's own artifactId is found.
-  out = out.replace(/<parent>[\s\S]*?<\/parent>/, (m) => m.replace(/[^\n]/g, " "));
+  out = blankBlocks(out, "<parent>", "</parent>", true);
   if (dropSections) {
     for (const section of ["dependencyManagement", "build", "pluginRepositories", "reporting"]) {
-      out = out.replace(new RegExp(`<${section}>[\\s\\S]*?</${section}>`, "g"), (m) => m.replace(/[^\n]/g, " "));
+      out = blankBlocks(out, `<${section}>`, `</${section}>`);
     }
   }
   return out;
 }
 
 /** Compile-scope `<dependency>` entries outside `<dependencyManagement>` and `<build>`. */
-export function mavenDependencies(text: string): JavaDependency[] {
+export function mavenDependencies(text: string, managed: Map<string, string> = new Map()): JavaDependency[] {
   const body = stripMaven(text);
   const out: JavaDependency[] = [];
-  for (const m of body.matchAll(/<dependency>([\s\S]*?)<\/dependency>/g)) {
-    const block = m[1]!;
+  for (const m of xmlBlocks(body, "<dependency>", "</dependency>")) {
+    const block = m.inner;
     const tag = (name: string) => new RegExp(`<${name}>\\s*([^<]*?)\\s*</${name}>`).exec(block)?.[1];
     const group = tag("groupId");
     const artifact = tag("artifactId");
-    const scope = tag("scope") ?? "compile";
+    const scope = tag("scope") ?? (group && artifact ? managed.get(`${group}:${artifact}`) : undefined) ?? "compile";
     if (!group || !artifact || scope !== "compile" || tag("type") === "pom" || tag("optional") === "true") continue;
-    const line = body.slice(0, m.index! + m[0].indexOf("<artifactId>")).split("\n").length;
+    const line = body.slice(0, m.index + body.slice(m.index, m.end).indexOf("<artifactId>")).split("\n").length;
     out.push({ group, artifact, line });
   }
   return out;

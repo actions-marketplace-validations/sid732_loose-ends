@@ -28,7 +28,7 @@ export class PythonResolver {
       }
     }
     const roots = new Set<string>();
-    for (const p of projects) for (const r of [p.dir, join(p.dir, "src")]) roots.add(r);
+    for (const p of projects) for (const r of [p.dir, join(p.dir, "src"), ...p.sourceDirs.map((d) => join(p.dir, d))]) roots.add(r);
     roots.add("");
     roots.add("src");
     this.sourceRoots = [...roots].filter((r) => r === "" || this.dirs.has(r));

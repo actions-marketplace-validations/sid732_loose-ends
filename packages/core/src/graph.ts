@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { posix } from "node:path";
 import { discoverFiles, type SourceFile } from "./discover.js";
 import { createMatcher } from "./paths.js";
-import { MODULE_BODY, parseModule, type Declaration, type ImportBinding, type ImportRecord, type ModuleInfo } from "./parse.js";
+import { MODULE_BODY, parseComponent, parseModule, type Declaration, type ImportBinding, type ImportRecord, type ModuleInfo } from "./parse.js";
 import { Resolver, isPython, type Resolution } from "./resolve.js";
 import { parseNotebook, parsePython } from "./python/parse.js";
 import { PythonLinker } from "./python/link.js";
@@ -131,7 +131,7 @@ export function buildGraph(config: LooseEndsConfig, options: { read?: (abs: stri
   const graph = new LivenessGraph();
 
   for (const file of files) {
-    const parse = file.path.endsWith(".py") ? parsePython : file.path.endsWith(".ipynb") ? parseNotebook : file.path.endsWith(".java") ? parseJava : parseModule;
+    const parse = file.path.endsWith(".py") ? parsePython : file.path.endsWith(".ipynb") ? parseNotebook : file.path.endsWith(".java") ? parseJava : /\.(vue|svelte|astro)$/.test(file.path) ? parseComponent : parseModule;
     let info: ModuleInfo;
     try {
       info = parse(file.path, read(file.abs));

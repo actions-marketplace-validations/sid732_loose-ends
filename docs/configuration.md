@@ -25,12 +25,12 @@ Every option is optional. Run `npx loose-ends init` to write a starter file, and
 
 | Option | Default | Description |
 |---|---|---|
-| `include` / `extendInclude` | `**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}`, `**/*.py`, `**/*.ipynb`, `**/*.java` | Source files to analyze. `include` replaces the default and `extendInclude` adds to it. |
+| `include` / `extendInclude` | `**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs,vue,svelte,astro}`, `**/*.py`, `**/*.ipynb`, `**/*.java` | Source files to analyze. `include` replaces the default and `extendInclude` adds to it. |
 | `exclude` / `extendExclude` | `node_modules`, `dist`, `build`, `out`, `coverage`, `.next`, `*.d.ts`, `__pycache__`, `.venv`, `venv`, `.tox`, `site-packages`, `target`, `.gradle`, … | Files to ignore. The root `.gitignore` is applied as well. |
 | `testPatterns` / `extendTestPatterns` | `*.test.*`, `*.spec.*`, `__tests__/`, `test/`, `tests/`, `e2e/`, `*.stories.*`, `fixtures/`, `test_*.py`, `*_test.py`, `tests.py`, `conftest.py`, `src/test/`, `src/androidTest/`, `*Test.java`, `*Tests.java`, `*IT.java` | Files that count as tests. Tests are roots, but code reachable only from tests is reported as test-only. |
 | `languages` | `["javascript", "python", "java"]` | Languages to analyze. Remove one to skip its files entirely. |
 | `entries` | `[]` | Extra production roots. Use these for things a runtime loads by name, such as job files or plugin modules. `path#symbol` makes just one export a root. |
-| `frameworks` | `"auto"` | Which framework conventions to apply. `auto` reads each workspace package's dependencies and each Python project's requirements. Python names: `django`, `flask`, `fastapi`, `celery`, `alembic`, `airflow`, `streamlit`, `pytest`. |
+| `frameworks` | `"auto"` | Which framework conventions to apply. `auto` reads each workspace package's dependencies and each Python project's requirements. JS names include `next`, `vite`, `sveltekit`, `astro`, `nuxt`, `nest`, `react-router`, `vitepress`; Python names: `django`, `flask`, `fastapi`, `celery`, `alembic`, `airflow`, `streamlit`, `pytest`. |
 | `dormant` | `[]` | Code that is unreachable on purpose. Every rule needs a `reason`. |
 | `suppressions` | `[]` | Findings that have been reviewed and accepted. Every suppression needs a `reason`. `kind` limits it to one finding kind, and once `expires` passes the suppression stops working and is reported. |
 | `checks` | `[]` | Commands run by `loose-ends fix --verify` and `--apply` against the cleaned-up copy. |

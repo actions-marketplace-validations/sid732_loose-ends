@@ -120,7 +120,7 @@ export const pythonRoots: RootProvider = {
 /** A published package's public modules are its API: every module whose path has no `_private` part. */
 function libraryRoots(ctx: RootContext, project: PythonProject, pyFiles: string[]): void {
   const resolver = ctx.build.resolver.python;
-  for (const base of [project.dir, join2(project.dir, "src")]) {
+  for (const base of [project.dir, join2(project.dir, "src"), ...project.sourceDirs.map((d) => join2(project.dir, d))]) {
     const prefix = base ? base + "/" : "";
     const packages = new Set<string>();
     for (const file of pyFiles) {

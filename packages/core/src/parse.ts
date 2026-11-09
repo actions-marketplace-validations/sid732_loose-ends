@@ -154,6 +154,7 @@ export interface StringRef {
 
 export function scriptKindFor(path: string): ts.ScriptKind {
   if (path.endsWith(".tsx")) return ts.ScriptKind.TSX;
+  if (/\.(vue|svelte|astro)$/.test(path)) return ts.ScriptKind.TS;
   if (path.endsWith(".ts") || path.endsWith(".mts") || path.endsWith(".cts")) return ts.ScriptKind.TS;
   if (path.endsWith(".json")) return ts.ScriptKind.JSON;
   return ts.ScriptKind.JSX;
@@ -164,6 +165,49 @@ export function createSource(path: string, text: string): ts.SourceFile {
 }
 
 /** Extract imports, exports, top-level declarations, and references from a module. */
+/**
+ * Vue and Svelte single-file components: the `<script>` blocks are parsed as
+ * TypeScript (other text blanked so line numbers hold), and an imported name
+ * that appears in the template counts as used.
+ */
+export function parseComponent(path: string, text: string): ModuleInfo {
+  const blank = (t: string) => t.replace(/[^\n]/g, " ");
+  let script = "";
+  let template = "";
+  let last = 0;
+  // Find each opening tag, then the next closing tag, with two simple regexes rather than one lazy one.
+  const opening = /<script\b[^>]*>/gi;
+  const closing = /<\/script\b[^>]*>/gi;
+  for (let open = opening.exec(text); open; open = opening.exec(text)) {
+    const start = open.index + open[0].length;
+    closing.lastIndex = start;
+    const close = closing.exec(text);
+    const stop = close ? close.index : text.length;
+    template += text.slice(last, open.index);
+    script += blank(text.slice(last, start)) + text.slice(start, stop);
+    last = stop;
+    opening.lastIndex = close ? close.index + close[0].length : text.length;
+  }
+  template += text.slice(last);
+  script += blank(text.slice(last));
+  // Astro: the frontmatter between the leading `---` fences is the component script.
+  const front = /^(\s*---\r?\n)([\s\S]*?)\r?\n---/.exec(text);
+  if (front && path.endsWith(".astro")) {
+    const start = front[1]!.length;
+    script = blank(text.slice(0, start)) + front[2]! + script.slice(start + front[2]!.length);
+  }
+  const info = parseModule(path, script);
+  const used = new Set(info.bodyReferences);
+  for (const imp of info.imports) {
+    for (const b of imp.bindings) {
+      const kebab = b.local.replace(/([a-z0-9])([A-Z])/g, "$1-$2").toLowerCase();
+      if (new RegExp(`\\b${b.local}\\b`).test(template) || (kebab !== b.local && template.includes(`<${kebab}`))) used.add(b.local);
+    }
+  }
+  info.bodyReferences = [...used].sort();
+  return info;
+}
+
 export function parseModule(path: string, text: string): ModuleInfo {
   const sf = createSource(path, text);
   const info: ModuleInfo = {

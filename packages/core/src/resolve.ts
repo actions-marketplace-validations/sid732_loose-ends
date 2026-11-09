@@ -183,6 +183,12 @@ export class Resolver {
       }
       return undefined;
     }
+    // SvelteKit's `$lib` alias is `src/lib`.
+    const lib = /^\$lib(?:\/(.*))?$/.exec(specifier);
+    if (lib) {
+      const file = this.fileOrSource(posix.normalize(posix.join(dir, "src/lib", lib[1] ?? "")));
+      return file ? { kind: "file", path: file } : undefined;
+    }
     const match = /^[@~]\/(.*)$/.exec(specifier);
     if (!match) return undefined;
     for (const base of ["src", ""]) {
