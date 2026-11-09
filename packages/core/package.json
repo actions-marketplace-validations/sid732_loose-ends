@@ -23,7 +23,7 @@
     "fast-glob": "^3.3.3",
     "ignore": "^7.0.14",
     "picomatch": "^4.0.7",
-    "typescript": "6.0.3"
+    "typescript": "7.0.2"
   },
   "devDependencies": {
     "@types/picomatch": "^4.0.3"
