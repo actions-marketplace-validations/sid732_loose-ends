@@ -1,6 +1,6 @@
 {
   "name": "loose-ends",
-  "version": "1.1.1",
+  "version": "1.2.0",
   "description": "Graph-powered liveness checks for AI-written code.",
   "license": "MIT",
   "type": "module",
@@ -31,7 +31,7 @@
     "build": "tsc -b"
   },
   "dependencies": {
-    "@loose-ends/core": "1.1.1",
+    "@loose-ends/core": "1.2.0",
     "commander": "^14.0.0"
   },
   "repository": {
